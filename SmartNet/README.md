@@ -1,10 +1,12 @@
 # SmartNet · Internet en casa
 
-Simulador educativo para hogares en Chile, proyecto de Funciones y Matrices (Analista Programador, INACAP). No escanea Wi-Fi ni mide tráfico real.
+Aplicación educativa para hogares en Chile: medición orientativa desde el navegador, escenarios domésticos y matrices para Funciones y Matrices (Analista Programador, INACAP).
 
-## Windows: abrir la aplicación
+## Windows
 
-Instala Python **3.12 de 64 bits** (las dependencias fijadas no están preparadas para Python 3.14). Abre `cmd` en esta carpeta y ejecuta cada línea:
+Instala **Python 3.12 de 64 bits**. Extrae el ZIP y abre **Iniciar_SmartNet.bat**. El script crea el entorno virtual si falta, instala las dependencias y abre Streamlit. Mantén la ventana abierta. Este lanzador se entrega para Windows; no se ha ejecutado en una máquina Windows durante el desarrollo.
+
+Alternativa desde `cmd` dentro de esta carpeta:
 
 ```bat
 py -3.12 -m venv .venv
@@ -12,9 +14,9 @@ py -3.12 -m venv .venv
 .venv\Scripts\python -m streamlit run app.py
 ```
 
-Después de la primera instalación, basta el último comando. Mantén la terminal abierta durante el uso. Ctrl+C detiene el servidor.
+Para actualizar, detén la app (Ctrl+C) y reemplaza los archivos de SmartNet con los del nuevo ZIP, incluyendo **speed_component**, **speed_test.py** y **household.py**. Conserva tu carpeta `.venv`.
 
-## Otros sistemas / entorno cloud
+## Linux / cloud
 
 ```bash
 python3.12 -m venv .venv
@@ -23,29 +25,72 @@ pip install -r requirements.txt
 streamlit run app.py --server.headless true
 ```
 
-## Uso para una familia
+## Flujo familiar
 
-1. Elige los megas del plan o ingresa la descarga obtenida con un test de velocidad en tu equipo. Si no conoces la velocidad, prueba un escenario hipotético.
-2. Selecciona un ejemplo o agrega los equipos y su actividad principal simultánea. No cuentes un equipo dos veces.
-3. Revisa el resultado: verde bajo 80%, amarillo desde 80% hasta 100%, rojo sobre 100%. El 80% es un margen preventivo didáctico, no un estándar técnico.
-4. Prueba pausar descargas o cambiar 4K a HD y compara el porcentaje antes/después sin modificar el escenario original.
+1. Haz el test aquí, o ingresa manualmente una velocidad. Si no la conoces, el escenario de internet es hipotético. Confirma los megas del plan en tu boleta; GB de una bolsa no son Mbps. Las velocidades seleccionables son ejemplos, no ofertas verificadas de operadores.
+2. Si quieres, activa comparación de 2,4/5 GHz y edita sus capacidades **supuestas** y escenarios de señal.
+3. Agrega grupos de equipos con actividad y banda comunes. Cuenta cada equipo una vez. Seleccionar una cámara propone transmisión a la nube; ajústala si no transmite constantemente. No se modela grabación exclusivamente local.
+4. Revisa descarga de internet, subida y bandas por separado. Verde <80%, amarillo 80–100%, rojo >100%. 80% es un margen preventivo didáctico, no estándar técnico.
+5. Compara pausar descargas, bajar 4K a HD o mover equipos compatibles entre bandas. El cambio de banda no reduce el consumo total de internet.
 
-Las opciones de velocidades son ejemplos orientativos en Mbps, no un catálogo comercial verificado. Consulta tu boleta o proveedor para conocer el plan, disponibilidad y tecnología. Los GB de una bolsa de datos no son Mbps. Una conexión con margen de descarga puede seguir teniendo problemas de cobertura, latencia o subida; la app ofrece consejos diferenciados y no recomienda automáticamente contratar más velocidad.
+Incluye celulares, PC, TV, consolas, cámaras, tablets, TV Box, parlantes, ampolletas/enchufes, impresoras y aspiradoras robot. El tipo organiza la matriz; es la **actividad elegida** la que determina la demanda.
 
-## Modelo académico
+## Test en el navegador
 
-`household.py` organiza la matriz A por tipo de equipo y actividad. b contiene supuestos ilustrativos por equipo activo: navegación 0,5; HD 5; videollamada 1,5; 4K 25; jugar 3; descarga 50 Mbps. No son mediciones ni estándares universales. La descarga real puede ocupar gran parte de la conexión; el valor fijo permite comparar escenarios. No se modelan cámaras de seguridad ni saturación de subida.
+El componente local `speed_component` no usa scripts JavaScript externos. Desde el navegador del visitante hace GET a `https://speed.cloudflare.com/__down` y POST a `https://speed.cloudflare.com/__up`. No prueba la conexión del servidor Python. No requiere claves, ejecutables ni privilegios de administrador.
 
-A × b entrega demanda por equipo. C es su suma; U(C) = C/B × 100, con B > 0. La sección académica está plegada para no dificultar el uso cotidiano. Conserva el ejemplo original de `model.py`: selecciona “Ejemplo de la asignatura” y B = 20 Mbps para obtener [2,5; 2; 10; 0] Mbps, C = 14,5 Mbps y U = 72,5%.
+Solo comienza al pulsar el botón. Prueba breve secuencial adaptativa, con calentamiento, cinco respuestas HTTP y transferencias acotadas; máximo nominal menor de 45 MB por intento, límites de 15 segundos por petición y 75 segundos en total. Puede consumir una bolsa de datos. La subida usa bytes aleatorios, no archivos del usuario. Cloudflare recibe la IP y metadatos habituales de conexión; no recibe el escenario. Consulta su política de privacidad desde la interfaz. Se puede cancelar; un fallo no crea una medición nueva ni borra la anterior, que sigue identificada como última prueba.
 
-La comparación usa el mismo B y aplica cambios únicamente a las actividades elegidas. El CSV exporta matriz y demanda por equipo. No incluye interferencia, cobertura, sobrecarga de protocolos, tráfico variable ni capacidad de subida. Resultados OMNeT++/INET pendientes de recibir los archivos originales.
+La velocidad usa bytes transferidos × 8 / segundos / 1.000.000. Se calcula la mediana de transferencias de al menos 150 ms o, si todas fueron más breves, la última muestra. La descarga incluye recepción del cuerpo; la subida incluye respuesta del servicio. La latencia es mediana de respuestas HTTP, no ping ICMP. La variación mostrada es máximo menos mínimo de esas respuestas, no jitter de paquetes RTP. No se mide pérdida de paquetes ni velocidad máxima certificada. Conexiones muy rápidas pueden subestimarse por el tamaño acotado y las transferencias secuenciales.
 
-## Pruebas
+Pulsa “Usar esta medición” para copiar descarga y subida al simulador. El historial conserva cinco pruebas en la sesión, etiquetadas según el lugar elegido al iniciar. Repite cerca/lejos/con cable: una diferencia sugiere revisar cobertura o interferencia, pero no prueba una causa única. Una medición mientras otros usan internet refleja capacidad disponible en ese momento, no capacidad total de toda la casa; usarla como referencia es una aproximación.
 
-Desde esta carpeta, con el entorno virtual activo:
+**Requisito de red:** el navegador debe poder acceder a `speed.cloudflare.com` por HTTPS con CORS. Si el servicio o la red lo impiden, la app muestra error y permite ingresar resultados manualmente. No se deshabilita TLS ni se intenta eludir restricciones.
+
+## Modelo de descarga, subida y bandas
+
+A tiene filas por tipo de equipo y columnas por actividad. Vectores ilustrativos por equipo activo, en Mbps (descarga/subida):
+
+| Actividad | Descarga | Subida |
+| --- | ---: | ---: |
+| Navegar | 0,5 | 0,1 |
+| HD | 5 | 0,1 |
+| Videollamada | 1,5 | 1,5 |
+| 4K | 25 | 0,1 |
+| Juego online | 3 | 0,5 |
+| Descargar archivos | 50 | 0,5 |
+| Cámara a la nube | 0,1 | 2 |
+| IoT en espera | 0,02 | 0,02 |
+| Música | 0,3 | 0,05 |
+| Respaldo a la nube | 0,5 | 10 |
+| Conectado sin uso | 0,01 | 0,01 |
+
+Son supuestos didácticos, no estándares universales ni mediciones. Descargas reales pueden ocupar toda la capacidad disponible; compresión/calidad alteran los consumos de cámaras y video.
+
+D = suma(A · b_descarga), T = suma(A · b_subida). U_descarga = 100D/B_descarga, U_subida = 100T/B_subida. Sin capacidad de subida conocida no se calcula su porcentaje, aunque la descarga esté verde.
+
+A_2,4 y A_5 separan equipos por banda. Su demanda local aproximada es suma(A_banda · (b_descarga + b_subida)), comparada con una capacidad compartida **hipotética**. Las referencias iniciales 80 y 300 Mbps no son velocidades universales. Los factores 100%, 50% y 25% representan escenarios educativos de señal y se aplican al grupo completo de cada banda. No hay medición de RSSI, ocupación del canal, retransmisiones ni ancho de canal. Las capacidades son independientes de la referencia de internet: ambas bandas y los equipos por cable comparten ese cuello de botella de internet.
+
+“No sé la banda” se incluye en internet pero no se asigna arbitrariamente a una banda; se advierte que la comparación está incompleta. Cable no consume el Wi-Fi supuesto. Mover dispositivos entre bandas conserva demanda total. 5 GHz suele ofrecer más capacidad cerca del router, pero puede rendir peor con distancia/paredes. Ninguna banda garantiza mejor rendimiento.
+
+La sección académica muestra A, ambos vectores, submatrices por banda y las funciones. S(n) = 100 n c / C es el caso de consumos idénticos: 10 equipos × 10 Mbps dan 125% frente a 80 Mbps y 33,3% frente a 300 Mbps.
+
+Para el ejemplo original, elige “Ejemplo de la asignatura”, descarga personalizada 20 Mbps y desmarca usar medición: D = 14,5 Mbps y 72,5%. `model.py` conserva el modelo original. Los resultados OMNeT++/INET siguen pendientes de recibir los archivos originales.
+
+## Validación
+
+Desde esta carpeta con el entorno activo:
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-Incluye cálculos originales, fronteras, escenarios domésticos, medidas de reducción, formularios, capacidad desconocida y agregar/quitar equipos.
+Incluye ejemplo original, límites, cámaras saturando subida, bandas separadas, internet compartido, grupos sin banda/cable, traslado entre bandas, edición de filas e importación de mediciones.
+
+Con Playwright, Chromium y servidor local iniciado:
+
+```bash
+node browser_tests/speed.cjs
+```
+
+Variables opcionales: `PLAYWRIGHT_MODULE` (ruta al módulo), `CHROMIUM_PATH` (ejecutable). Prueba de navegador **con respuestas controladas**: transferencias, límite de datos, envío a Streamlit, aplicación al modelo, error y cancelación. No presenta los datos controlados como velocidad real. En este entorno cloud la petición externa a Cloudflare devolvió HTTP 403; no se ha validado aquí una medición real con ese servicio. El dominio se añadió al borrador de red para revisión; guardarlo no aplica ni publica la política.

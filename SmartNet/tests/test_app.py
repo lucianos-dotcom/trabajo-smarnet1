@@ -33,5 +33,27 @@ class AppTests(unittest.TestCase):
         app.selectbox(key='plan').select('No sé mi velocidad').run()
         self.assertTrue(app.warning)
         app.checkbox(key='use_test').check().run()
-        self.assertFalse(app.warning)
+        self.assertFalse(any('Velocidad desconocida' in w.value for w in app.warning))
+        self.assertFalse(app.exception)
+
+    def test_bands_and_camera_preset(self):
+        app=self.app()
+        app.selectbox(key='preset').select('Casa con cámaras y dispositivos inteligentes').run()
+        app.checkbox(key='know_upload').check().run()
+        app.number_input(key='upload_capacity').set_value(5).run()
+        self.assertTrue(any('Subida de internet' in e.value for e in app.error))
+        app.checkbox(key='model_wifi').check().run()
+        app.selectbox(key='band_0').select('2,4 GHz').run()
+        app.checkbox(key='move').check().run()
+        self.assertFalse(app.exception)
+
+    def test_import_speed_result(self):
+        app=self.app()
+        app.session_state['last_speed']=dict(download=42.0, upload=7.0, latency=20.0, jitter=2.0, id='sample', timestamp='2026-11-04T00:00:00Z')
+        app.session_state['speed_history']=[]
+        app.run()
+        app.button(key='apply_speed').click().run()
+        self.assertEqual(app.number_input(key='measured').value,42)
+        self.assertEqual(app.number_input(key='upload_capacity').value,7)
+        self.assertTrue(app.checkbox(key='use_test').value)
         self.assertFalse(app.exception)
