@@ -15,7 +15,7 @@ class AppTests(unittest.TestCase):
         self.assertEqual(app.metric[2].value, '72.5%')
         app.number_input(key='custom_capacity').set_value(10).run()
         self.assertEqual(app.metric[2].value, '145.0%')
-        self.assertTrue(app.error)
+        self.assertTrue(any('No alcanza en este ejemplo' in m.value for m in app.markdown))
         self.assertFalse(app.exception)
 
     def test_solutions_and_rows(self):
@@ -31,9 +31,9 @@ class AppTests(unittest.TestCase):
         app.selectbox(key='preset').select('Empezar desde cero').run()
         self.assertEqual(app.metric[0].value, '0 Mbps')
         app.selectbox(key='plan').select('No sé mi velocidad').run()
-        self.assertTrue(app.warning)
+        self.assertTrue(any('Falta saber la velocidad' in m.value for m in app.info))
         app.checkbox(key='use_test').check().run()
-        self.assertFalse(any('Velocidad desconocida' in w.value for w in app.warning))
+        self.assertFalse(any('Falta saber la velocidad' in m.value for m in app.info))
         self.assertFalse(app.exception)
 
     def test_bands_and_camera_preset(self):
@@ -41,7 +41,7 @@ class AppTests(unittest.TestCase):
         app.selectbox(key='preset').select('Casa con cámaras y dispositivos inteligentes').run()
         app.checkbox(key='know_upload').check().run()
         app.number_input(key='upload_capacity').set_value(5).run()
-        self.assertTrue(any('Subida de internet' in e.value for e in app.error))
+        self.assertTrue(any('No alcanza en este ejemplo' in m.value for m in app.markdown))
         app.checkbox(key='model_wifi').check().run()
         app.selectbox(key='band_0').select('2,4 GHz').run()
         app.checkbox(key='move').check().run()

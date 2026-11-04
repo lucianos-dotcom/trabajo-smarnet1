@@ -94,3 +94,17 @@ node browser_tests/speed.cjs
 ```
 
 Variables opcionales: `PLAYWRIGHT_MODULE` (ruta al módulo), `CHROMIUM_PATH` (ejecutable). Prueba de navegador **con respuestas controladas**: transferencias, límite de datos, envío a Streamlit, aplicación al modelo, error y cancelación. No presenta los datos controlados como velocidad real. En este entorno cloud la petición externa a Cloudflare devolvió HTTP 403; no se ha validado aquí una medición real con ese servicio. El dominio se añadió al borrador de red para revisión; guardarlo no aplica ni publica la política.
+
+## Resultados para toda la familia
+
+La vista principal muestra un resumen de la casa y tarjetas: recibir datos (series/navegación), enviar datos (cámaras/llamadas) y, si se activa, cada banda. Usa colores e indicaciones escritas: hay espacio, está justito, no alcanza en el ejemplo o falta un dato. No presenta un estado global verde si faltan subida o bandas necesarias; un problema conocido se muestra aunque falten otros datos.
+
+Los porcentajes y tablas están plegados en “Quiero ver los números”. Las ideas de mejora son tarjetas con comparación “Antes / Con tus cambios”. Si la idea no afecta las actividades ingresadas, lo indica en vez de anunciar una mejora. “Qué se lleva la mayor parte” muestra porciones entre actividades (no porcentaje del plan). Las matrices siguen en la sección académica.
+
+Comprobación de la vista familiar en navegador, con servidor iniciado:
+
+```bash
+node browser_tests/family.cjs
+```
+
+Comprueba resumen, datos desconocidos, números plegados, idea sin efecto y anchura de pantalla móvil. No requiere contactar el servicio de velocidad.

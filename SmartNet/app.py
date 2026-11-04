@@ -5,11 +5,18 @@ import streamlit as st
 from household import (ACTIVITIES, DEVICES, RATES, UPLOAD_RATES, PRESETS, BANDS,
                        SIGNALS, network_summary, improve)
 from speed_test import render_speed_test, valid_result
+from results import STATES, checks, verdict
 
 st.set_page_config(page_title='SmartNet · Internet en casa', page_icon='📶', layout='wide')
 st.markdown('''<style>.block-container{max-width:1180px;padding-top:2rem}
 [data-testid="stMetric"]{border:1px solid #94a3b8;border-radius:16px;padding:16px}
-div.stButton>button{border-radius:12px;min-height:44px}</style>''', unsafe_allow_html=True)
+div.stButton>button{border-radius:12px;min-height:44px}
+[class*="st-key-family_card_"][class*="_good"]{border-top:5px solid #22c55e}
+[class*="st-key-family_card_"][class*="_tight"]{border-top:5px solid #eab308}
+[class*="st-key-family_card_"][class*="_over"]{border-top:5px solid #ef4444}
+[class*="st-key-family_card_"][class*="_unknown"]{border-top:5px solid #94a3b8}
+.st-key-family_summary{border-left:6px solid #0ea5e9}
+</style>''', unsafe_allow_html=True)
 ROW_PREFIXES = ('device_', 'activity_', 'count_', 'band_')
 
 def clear_rows():
@@ -33,14 +40,6 @@ def apply_measurement():
     st.session_state.upload_capacity = float(result['upload'])
     st.session_state.use_test = True
     st.session_state.know_upload = True
-
-def message(usage, subject):
-    if usage > 100:
-        st.error(f'🔴 {subject}: demanda sobre la capacidad de referencia ({usage:.1f}%). Hay un posible cuello de botella en este escenario.')
-    elif usage >= 80:
-        st.warning(f'🟡 {subject}: queda poco margen ({usage:.1f}%). Prueba repartir actividades en otros horarios.')
-    else:
-        st.success(f'🟢 {subject}: con margen en el modelo ({usage:.1f}%).')
 
 if 'rows' not in st.session_state:
     st.session_state.preset = 'Una tarde en casa'
@@ -134,39 +133,103 @@ if st.button('＋ Agregar otro equipo', key='add'):
     st.rerun()
 
 summary = network_summary(rows,capacity,upload,band_caps)
-st.subheader('4 · ¿Dónde podría estar el problema?')
+items = checks(summary, known, model_wifi)
+incomplete_bands = bool(model_wifi and summary['bands'][BANDS[3]]['matrix'].sum())
+active = bool(summary['matrix'].sum())
+overall, headline, explanation = verdict(items, active, incomplete_bands)
+st.subheader('4 · Así está tu casa en este ejemplo')
+with st.container(border=True,key='family_summary'):
+    st.markdown(f'### {headline}')
+    st.write(explanation)
+    st.caption('Piensa en internet como una entrada y una salida: ver series trae datos; una cámara que transmite envía datos. Cada lado puede llenarse por separado.')
+st.caption('Es una estimación de las actividades que ingresaste, no un diagnóstico automático de tu red.')
 if not known:
-    st.warning('Velocidad desconocida: los resultados de internet son hipotéticos.')
-if not summary['matrix'].sum():
-    st.info('Agrega al menos un equipo en uso para simular tu casa.')
-a,b,c=st.columns(3)
-a.metric('Demanda de descarga',f"{summary['down']:g} Mbps")
-b.metric('Descarga de referencia',f'{capacity:g} Mbps')
-c.metric('Demanda / referencia',f"{summary['down_usage']:.1f}%")
-message(summary['down_usage'],'Descarga de internet')
-st.progress(min(summary['down_usage']/100,1.0))
-st.write(f"**Subida necesaria:** {summary['up']:g} Mbps" + (f' · referencia: {upload:g} Mbps' if upload is not None else ' · capacidad todavía desconocida'))
-if upload is not None:
-    message(summary['up_usage'],'Subida de internet')
-else:
-    st.warning('Falta la velocidad de subida para evaluar ese posible cuello de botella. Un resultado verde en descarga no descarta problemas con cámaras o llamadas.')
-if model_wifi:
-    for band in BANDS[:2]:
-        data=summary['bands'][band]
-        st.write(f"**{band}:** {data['down']:g} Mbps de descarga + {data['up']:g} Mbps de subida / {data['capacity']:g} Mbps supuestos compartidos.")
-        message(data['usage'],f'Escenario Wi-Fi {band}')
-    unknown=summary['bands'][BANDS[3]]
-    if unknown['matrix'].sum():
-        st.warning('Hay equipos sin banda identificada. Se incluyen en internet, pero no en la comparación Wi-Fi; los resultados por banda están incompletos.')
-    st.caption('Ambas bandas comparten la conexión de internet. La suma descarga + subida aproxima demanda local compartida; no es ocupación real del canal ni modela retransmisiones. Los equipos por cable no consumen la capacidad Wi-Fi supuesta.')
-st.caption('Verde: menos de 80%; amarillo: 80–100%; rojo: más de 100%. El umbral preventivo de 80% es didáctico. Las actividades tienen demandas supuestas, aunque uses un test real como referencia.')
+    st.info('🔎 Falta saber la velocidad de tu casa. Puedes medirla arriba o encontrar los megas en tu boleta. Los números de descarga actuales son solo un ejemplo.')
+if incomplete_bands:
+    st.info('🔎 Algunos equipos tienen “No sé la banda”. Están contados para internet, pero todavía no podemos ubicarlos en 2,4 o 5 GHz.')
 
-st.subheader('5 · Prueba qué mejora tu conexión')
-pause=st.checkbox('Dejar las descargas de juegos o archivos para más tarde',key='pause')
-lower=st.checkbox('Ver en HD en vez de 4K',key='lower')
-move=st.checkbox('Simular mover equipos de 2,4 a 5 GHz',key='move') if model_wifi else False
-if move:
-    st.caption('Solo para equipos compatibles y con señal adecuada. Si un equipo necesita quedarse en 2,4 GHz, desmarca la opción y cambia únicamente los grupos apropiados en el formulario.')
+if active:
+    cols=st.columns(2)
+    for index,item in enumerate(items):
+        icon,label=STATES[item['state']]
+        with cols[index%2]:
+            with st.container(border=True,key=f"family_card_{index}_{item['state']}"):
+                st.markdown(f"#### {item['title']}")
+                st.write(item['explanation'])
+                st.markdown(f'**{icon} {label}**')
+                if item['usage'] is not None:
+                    st.progress(min(item['usage']/100,1.0))
+                    if item['state']=='over':
+                        st.write('Las actividades necesitan más espacio del que hay disponible en esta referencia.')
+                    elif item['state']=='tight':
+                        st.write('Cabe muy justo: si se suma otra actividad, podría faltar espacio.')
+                    else:
+                        st.write('Estas actividades caben y todavía queda margen en el cálculo.')
+                    if item['state'] in ['over','tight']:
+                        st.caption(item['tip'])
+                elif item['key']=='upload':
+                    st.write('El test de arriba puede darte la velocidad de subida. Luego pulsa “Usar esta medición”.')
+                else:
+                    st.write('Haz el test de arriba o ingresa una velocidad que conozcas.')
+                if item['key'] in BANDS[:2]:
+                    st.caption('Esta tarjeta usa una capacidad y señal supuestas; no medidas.')
+
+    activity_down = summary['matrix'].sum(axis=0)*RATES
+    activity_up = summary['matrix'].sum(axis=0)*UPLOAD_RATES
+    with st.expander('🍰 ¿Qué se lleva la mayor parte?'):
+        st.write('No todos los equipos piden lo mismo. Estas son las actividades que más datos necesitan en tu ejemplo:')
+        left,right=st.columns(2)
+        for col,values,title in [(left,activity_down,'Para recibir datos'),(right,activity_up,'Para enviar datos')]:
+            with col:
+                st.markdown(f'**{title}**')
+                total_activity=float(values.sum())
+                for i in np.argsort(-values)[:3]:
+                    if values[i]>0:
+                        st.write(f'{ACTIVITIES[i]} · {values[i]/total_activity*100:.0f}% de lo que pide tu casa')
+                        st.progress(float(values[i]/total_activity))
+        st.caption('Estas porciones comparan actividades entre sí; no indican cuánto queda de tu plan.')
+
+with st.expander('🔢 Quiero ver los números'):
+    a,b,c=st.columns(3)
+    a.metric('Demanda de descarga',f"{summary['down']:g} Mbps")
+    b.metric('Descarga de referencia',f'{capacity:g} Mbps')
+    c.metric('Demanda / referencia',f"{summary['down_usage']:.1f}%")
+    st.write(f"Subida que necesitan tus equipos: **{summary['up']:g} Mbps**.")
+    if upload is not None:
+        st.write(f"Subida de referencia: **{upload:g} Mbps** · demanda / referencia: **{summary['up_usage']:.1f}%**.")
+    else:
+        st.write('Subida de referencia: todavía desconocida.')
+    if model_wifi:
+        for band in BANDS[:2]:
+            data=summary['bands'][band]
+            st.write(f"**{band}:** {data['down']:g} de descarga + {data['up']:g} de subida / {data['capacity']:g} Mbps supuestos → **{data['usage']:.1f}%**.")
+        st.caption('Las bandas comparten internet. Su cálculo local suma descarga y subida como simplificación. Cable no utiliza estas capacidades Wi-Fi; equipos sin banda conocida no se asignan a ninguna.')
+    st.caption('Menos de 80%: verde. Desde 80% hasta 100%: amarillo. Más de 100%: rojo. El 80% es un margen educativo; no un estándar técnico. Una barra llena puede representar más de 100%.')
+
+st.subheader('5 · ¿Qué podemos probar en familia?')
+st.write('Activa una idea y mira cómo cambia el resultado. Aquí solo hacemos una prueba: no apagamos ni cambiamos tus equipos.')
+left,right=st.columns(2)
+with left:
+    with st.container(border=True):
+        st.markdown('#### ⏸️ Las descargas pueden esperar')
+        st.write('Dejar un juego o archivo grande para cuando nadie esté en clases o viendo series.')
+        pause=st.checkbox('Probar dejar las descargas para después',key='pause')
+        if not any(r['activity']==ACTIVITIES[5] and r['count'] for r in rows):
+            st.caption('En tu ejemplo no hay descargas grandes: esta idea no cambiará el resultado.')
+with right:
+    with st.container(border=True):
+        st.markdown('#### 📺 Disfrutar la película en HD')
+        st.write('Cambiar los videos de 4K a HD para que pidan menos internet.')
+        lower=st.checkbox('Probar videos en HD en vez de 4K',key='lower')
+        if not any(r['activity']==ACTIVITIES[3] and r['count'] for r in rows):
+            st.caption('En tu ejemplo no hay videos 4K: esta idea no cambiará el resultado.')
+move=False
+if model_wifi:
+    with st.container(border=True):
+        st.markdown('#### 📶 Repartir los equipos entre las dos bandas')
+        st.write('Probar cómo quedaría la red si los equipos de 2,4 GHz pasaran a 5 GHz.')
+        move=st.checkbox('Probar el cambio a 5 GHz',key='move')
+        st.caption('Solo funcionaría con equipos compatibles y buena señal. Aquí se mueve todo el grupo; para mover solo algunos, cambia su banda en el formulario de arriba. Más lejos del router, 5 GHz puede rendir peor.')
 new_rows=improve(rows,pause,lower)
 if move:
     for row in new_rows:
@@ -174,20 +237,44 @@ if move:
             row['band']=BANDS[1]
 new=network_summary(new_rows,capacity,upload,band_caps)
 if pause or lower or move:
-    st.metric('Demanda de descarga con estos cambios',f"{new['down']:g} Mbps",delta=f"{new['down']-summary['down']:g} Mbps",delta_color='inverse')
-    comparison=pd.DataFrame({'Indicador':['Internet: descarga']+(['Internet: subida'] if upload is not None else [])+(BANDS[:2] if model_wifi else []),
-        'Antes (%)':[summary['down_usage']]+([summary['up_usage']] if upload is not None else [])+([summary['bands'][b]['usage'] for b in BANDS[:2]] if model_wifi else []),
-        'Después (%)':[new['down_usage']]+([new['up_usage']] if upload is not None else [])+([new['bands'][b]['usage'] for b in BANDS[:2]] if model_wifi else [])})
-    st.dataframe(comparison,hide_index=True)
+    new_items=checks(new,known,model_wifi)
+    changed=(new['down']!=summary['down'] or new['up']!=summary['up'] or any(before['usage']!=after['usage'] for before,after in zip(items,new_items)))
+    st.markdown('### ✨ ¿Qué cambia con estas ideas?')
+    if not active:
+        st.info('Primero agrega equipos para probar estas ideas en tu casa.')
+    elif not changed:
+        st.info('Todo queda igual: las ideas elegidas no afectan las actividades que agregaste.')
+    else:
+        if not known and summary['up_usage'] is None:
+            st.write('Tus actividades piden menos datos, pero falta conocer tu velocidad para saber si alcanza. Puedes medirla arriba.')
+        for before,after in zip(items,new_items):
+            if before['usage']!=after['usage']:
+                bi,bl=STATES[before['state']]
+                ai,al=STATES[after['state']]
+                with st.container(border=True):
+                    st.markdown(f"**{before['title']}**")
+                    first,second=st.columns(2)
+                    first.write(f'Antes: {bi} **{bl}**')
+                    second.write(f'Con tus cambios: {ai} **{al}**')
+                    if after['usage'] < before['usage']:
+                        st.write('Ahora queda más espacio para compartir la conexión.')
+                    else:
+                        st.write('Esta parte recibe más demanda. Revisa si todavía tiene margen.')
+        _,new_headline,new_explanation=verdict(new_items,active,incomplete_bands)
+        st.markdown(f'**{new_headline}**')
+        st.write(new_explanation)
     if move:
-        st.write('Mover equipos entre bandas redistribuye la demanda Wi-Fi; no reduce la demanda total de internet. Revisa que la banda de destino también tenga margen.')
+        st.caption('Cambiar de banda reparte el uso del Wi-Fi; no reduce lo que toda la casa pide a internet. Mover equipos puede llenar la banda de destino.')
+    with st.expander('Ver la comparación en números'):
+        st.metric('Demanda de descarga con estos cambios',f"{new['down']:g} Mbps",delta=f"{new['down']-summary['down']:g} Mbps",delta_color='inverse')
+        st.dataframe(pd.DataFrame({'Parte de la conexión':[i['title'] for i in items], 'Antes (%)':[i['usage'] for i in items], 'Con los cambios (%)':[i['usage'] for i in new_items]}),hide_index=True)
+
 if summary['up_usage'] is not None and summary['up_usage']>=80:
-    st.write('**Revisa la subida:** evita respaldos simultáneos y revisa en la app de tus cámaras si transmiten continuamente o solo al detectar movimiento. Reducir calidad puede afectar el detalle de la grabación.')
-with st.expander('Está lento aunque los números estén verdes'):
-    st.write('1. Repite el test donde notas lentitud y cerca del router. Si mejora, puede haber un problema de cobertura o interferencia; el test no distingue cuál.')
-    st.write('2. Si puedes, compara con cable de red. Ubica el router en un lugar central y despejado. Prueba 5 GHz cerca; 2,4 GHz puede llegar mejor a lugares alejados.')
-    st.write('3. En juegos también importan latencia, variaciones y pérdida de paquetes. La respuesta HTTP de este test es solo una pista y no reemplaza un diagnóstico de juego.')
-    st.write('4. Si varios tests con cable siguen bajos y sin otras descargas, consulta a tu compañía. Una prueba baja puede deberse al equipo, servidor, Wi-Fi, tráfico u otros factores. No implica automáticamente que necesites un plan más caro.')
+    st.info('📷 Una idea para tus cámaras: revisa si envían video todo el día o solo cuando detectan movimiento. Evita respaldar archivos al mismo tiempo. Reducir calidad también puede reducir el detalle de la grabación.')
+with st.expander('🛋️ ¿Y si igual anda lento? Hagamos tres pruebas fáciles'):
+    st.markdown('**1. Acércate al router y repite el test.** Si mejora, vale la pena revisar la señal, las paredes o las interferencias. Deja el router en un lugar central y despejado.')
+    st.markdown('**2. Compara con cable, si puedes.** Así puedes revisar si cambia el resultado al dejar de usar Wi-Fi. En juegos también influyen el tiempo de respuesta y los cortes; este cálculo no los descarta.')
+    st.markdown('**3. Guarda los resultados para consultar a tu compañía.** Si sigue lento por cable y sin otras descargas, repite la prueba a distintas horas. No necesitas decidir cambiar de plan solo por este simulador.')
 
 with st.expander('Para la asignatura · Matrices, bandas y funciones'):
     st.write('A organiza tipos de equipo (filas) y actividades (columnas). Dos vectores b representan descarga y subida; A · b calcula demanda por equipo. Las submatrices A₂,₄ y A₅ agrupan solo los equipos de cada banda.')
