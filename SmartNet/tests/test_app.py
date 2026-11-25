@@ -26,6 +26,8 @@ class AppTests(unittest.TestCase):
         app.checkbox(key='pause').check().run()
         self.assertEqual(next(metric.value for metric in app.metric
                               if metric.label == 'Demanda de descarga con estos cambios'), '8 Mbps')
+        self.assertTrue(any('Antes: 108.0 Mbps · Con la propuesta: 8.0 Mbps' in item.value
+                            for item in app.markdown))
         app.button(key='add').click().run()
         self.assertEqual(len(app.session_state['rows']), 4)
         next(button for button in app.button if button.label == 'Quitar este grupo').click().run()
