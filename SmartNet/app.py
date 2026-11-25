@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 from household import (ACTIVITIES, DEVICES, RATES, UPLOAD_RATES, PRESETS, BANDS,
-                       SIGNALS, SATURATED_WIFI_PRESET, network_summary, improve, suggest_bands)
+                       SIGNALS, network_summary, improve, suggest_bands)
 from speed_test import render_speed_test, valid_result
 from results import STATES, checks, verdict
 
@@ -17,6 +17,13 @@ div.stButton>button{border-radius:12px;min-height:44px}
 </style>''', unsafe_allow_html=True)
 st.session_state.setdefault('row_revision', 0)
 DEFAULT_WIFI_CAPS = dict(zip(BANDS[:2], (80.0, 300.0)))
+SATURATED_WIFI_PRESET = 'Casa con Wi-Fi saturado'
+# Streamlit can retain the previous household module across a code update.
+SCENARIOS = {
+    name: groups for name, groups in PRESETS.items()
+    if name not in ('Demostración de clase: ambas bandas saturadas', SATURATED_WIFI_PRESET)
+}
+SCENARIOS[SATURATED_WIFI_PRESET] = [(4, 6, 2), (0, 2, 1), (2, 3, 1), (1, 5, 1)]
 CLASSROOM_WIFI_CAPS = dict(zip(BANDS[:2], (24.0, 120.0)))
 CLASSROOM_SIGNAL_OPTIONS = dict(zip(BANDS[:2], (2, 1)))
 
@@ -31,7 +38,7 @@ def replace_rows(rows):
 def load_preset():
     st.session_state.show_band_proposal = False
     preset = st.session_state.preset
-    groups = PRESETS[preset]
+    groups = SCENARIOS[preset]
     bands = [BANDS[3]] * len(groups)
     if preset == SATURATED_WIFI_PRESET:
         bands = [BANDS[0], BANDS[0], BANDS[1], BANDS[1]]
@@ -109,7 +116,7 @@ if use_test:
 know_upload = st.checkbox('Conozco mi velocidad de subida (o la obtuve en el test)', key='know_upload')
 upload = st.number_input('Subida de referencia (Mbps)', min_value=0.001, value=20.0, format='%.2f', key='upload_capacity') if know_upload else None
 st.subheader('2 · Arma tu escenario')
-st.selectbox('Prueba un ejemplo o arma tu casa', list(PRESETS), key='preset', on_change=load_preset)
+st.selectbox('Prueba un ejemplo o arma tu casa', list(SCENARIOS), key='preset', on_change=load_preset)
 classroom_demo = st.session_state.preset == SATURATED_WIFI_PRESET
 if classroom_demo:
     st.write('En la tarde, dos cámaras del patio suben video y alguien está en una videollamada lejos '
