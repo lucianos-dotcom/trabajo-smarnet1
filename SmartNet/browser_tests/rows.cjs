@@ -25,7 +25,7 @@ const presets = {
   ],
   'Empezar desde cero': [],
   'Casa con Wi-Fi saturado': [
-    [camera, cloud, 2, '2,4 GHz'], [phone, call, 1, '2,4 GHz'],
+    [camera, cloud, 2, '2,4 GHz'], [phone, call, 1, '2,4 GHz'], ['📟 Tablet', hd, 3, '2,4 GHz'],
     [tv, 'Ver videos o series en 4K', 1, '5 GHz'], [pc, 'Descargar juegos o archivos', 1, '5 GHz'],
   ],
 };

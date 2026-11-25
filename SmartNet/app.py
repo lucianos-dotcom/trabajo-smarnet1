@@ -24,8 +24,8 @@ SCENARIOS = {
     if name not in ('Ejemplo de la asignatura', 'Demostración de clase: ambas bandas saturadas',
                     SATURATED_WIFI_PRESET)
 }
-SCENARIOS[SATURATED_WIFI_PRESET] = [(4, 6, 2), (0, 2, 1), (2, 3, 1), (1, 5, 1)]
-CLASSROOM_WIFI_CAPS = dict(zip(BANDS[:2], (24.0, 120.0)))
+SCENARIOS[SATURATED_WIFI_PRESET] = [(4, 6, 2), (0, 2, 1), (5, 1, 3), (2, 3, 1), (1, 5, 1)]
+CLASSROOM_WIFI_CAPS = dict(zip(BANDS[:2], (80.0, 140.0)))
 CLASSROOM_SIGNAL_OPTIONS = dict(zip(BANDS[:2], (2, 1)))
 
 def row_key(field, i):
@@ -42,7 +42,7 @@ def load_preset():
     groups = SCENARIOS[preset]
     bands = [BANDS[3]] * len(groups)
     if preset == SATURATED_WIFI_PRESET:
-        bands = [BANDS[0], BANDS[0], BANDS[1], BANDS[1]]
+        bands = [BANDS[0], BANDS[0], BANDS[0], BANDS[1], BANDS[1]]
         st.session_state.classroom_wifi_revision = st.session_state.row_revision + 1
     replace_rows([
         dict(device=DEVICES[d], activity=ACTIVITIES[a], count=n, band=band)
@@ -121,11 +121,11 @@ st.selectbox('Prueba un ejemplo o arma tu casa', list(SCENARIOS), key='preset', 
 classroom_demo = st.session_state.preset == SATURATED_WIFI_PRESET
 demo_upload = False
 if classroom_demo:
-    st.write('En la tarde, dos cámaras del patio suben video y alguien está en una videollamada lejos '
-             'del router. Al mismo tiempo, se reproduce una serie en 4K y un notebook descarga un juego '
-             'en una habitación separada por paredes.')
-    st.caption('El ejemplo parte con 6 Mbps de capacidad Wi-Fi estimada en 2,4 GHz '
-               'y 60 Mbps en 5 GHz. Son referencias editables en Ajustes de Wi-Fi.')
+    st.write('En la tarde, dos cámaras del patio suben video, alguien está en una videollamada '
+             'y tres tablets reproducen videos en HD lejos del router. En otra habitación, un Smart TV '
+             'reproduce una serie en 4K y un notebook descarga un juego.')
+    st.caption('El ejemplo parte con 20 Mbps de capacidad Wi-Fi en 2,4 GHz y 70 Mbps en 5 GHz. '
+               'Son valores supuestos según la señal del escenario y se pueden editar en Ajustes de Wi-Fi.')
     demo_upload = st.toggle('Simular con 10 Mbps de subida', key='classroom_upload_example')
     if demo_upload:
         upload = 10.0

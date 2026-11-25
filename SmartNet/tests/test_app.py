@@ -60,11 +60,11 @@ class AppTests(unittest.TestCase):
         app.checkbox(key='know_upload').check().run()
         app.number_input(key='upload_capacity').set_value(5).run()
         app.toggle(key='classroom_upload_example').set_value(True).run()
-        self.assertTrue(any('Subida del ejemplo: **10 Mbps** · uso estimado: **61.0%**'
+        self.assertTrue(any('Subida del ejemplo: **10 Mbps** · uso estimado: **64.0%**'
                             in item.value for item in app.markdown))
         self.assertEqual(app.number_input(key='upload_capacity').value, 5)
         app.toggle(key='classroom_upload_example').set_value(False).run()
-        self.assertTrue(any('Subida de referencia: **5 Mbps** · uso estimado: **122.0%**'
+        self.assertTrue(any('Subida de referencia: **5 Mbps** · uso estimado: **128.0%**'
                             in item.value for item in app.markdown))
         self.assertFalse(app.exception)
 
