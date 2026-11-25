@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 from household import (ACTIVITIES, DEVICES, PRESETS, BANDS,
-                       SIGNALS, network_summary, improve, suggest_bands)
+                       network_summary, improve, suggest_bands)
 from report_image import simulation_png
 from speed_test import render_speed_test, valid_result
 from results import STATES, checks, state, verdict
@@ -26,8 +26,7 @@ SCENARIOS = {
                     'Casa con Wi-Fi saturado')
 }
 SCENARIOS.update(dict.fromkeys(CLASSROOM_UPLOADS, CLASSROOM_GROUPS))
-CLASSROOM_WIFI_CAPS = dict(zip(BANDS[:2], (80.0, 140.0)))
-CLASSROOM_SIGNAL_OPTIONS = dict(zip(BANDS[:2], (2, 1)))
+CLASSROOM_WIFI_CAPS = dict(zip(BANDS[:2], (20.0, 70.0)))
 
 def row_key(field, i):
     return f'{field}_{st.session_state.row_revision}_{i}'
@@ -44,7 +43,6 @@ def load_preset():
     bands = [BANDS[3]] * len(groups)
     if preset in CLASSROOM_UPLOADS:
         bands = [BANDS[0], BANDS[0], BANDS[0], BANDS[1], BANDS[1]]
-        st.session_state.classroom_wifi_revision = st.session_state.row_revision + 1
     replace_rows([
         dict(device=DEVICES[d], activity=ACTIVITIES[a], count=n, band=band)
         for (d, a, n), band in zip(groups, bands, strict=True)
@@ -318,16 +316,17 @@ with st.container(key='presentation_frame'):
                 equipment = sum(row['count'] for row in current_rows())
                 st.caption(f'Equipos en este escenario: {equipment}.')
             st.caption('Agrupa los equipos que hacen lo mismo y usan la misma conexión.')
-            with st.popover('❔ Cómo saber la banda de un equipo'):
-                st.markdown('**Revisa el equipo o la lista de conectados de tu router.**')
-                st.write('**Windows.** Ve a Configuración → Red e Internet → Wi-Fi. Abre las propiedades '
-                         'de la red conectada y busca «Banda de red».')
-                st.write('**Android.** Abre los detalles de tu red Wi-Fi. Si aparece la frecuencia, '
-                         'un valor cercano a 2400 MHz indica 2,4 GHz y uno cercano a 5000 MHz indica 5 GHz.')
-                st.write('**iPhone u otros equipos.** Busca el dispositivo en la app o el panel del router. '
-                         'Algunos modelos muestran si está en 2,4 GHz o 5 GHz.')
-                st.caption('Si el equipo está conectado por Ethernet, elige «Cable de red». '
-                           'Si no puedes comprobar su banda, elige «No sé la banda».')
+            with st.container(key='band_help'):
+                with st.popover('? Banda'):
+                    st.markdown('**Revisa el equipo o la lista de conectados de tu router.**')
+                    st.write('**Windows.** Ve a Configuración → Red e Internet → Wi-Fi. Abre las propiedades '
+                             'de la red conectada y busca «Banda de red».')
+                    st.write('**Android.** Abre los detalles de tu red Wi-Fi. Si aparece la frecuencia, '
+                             'un valor cercano a 2400 MHz indica 2,4 GHz y uno cercano a 5000 MHz indica 5 GHz.')
+                    st.write('**iPhone u otros equipos.** Busca el dispositivo en la app o el panel del router. '
+                             'Algunos modelos muestran si está en 2,4 GHz o 5 GHz.')
+                    st.caption('Si el equipo está conectado por Ethernet, elige «Cable de red». '
+                               'Si no puedes comprobar su banda, elige «No sé la banda».')
             rows = []
             for i,row in enumerate(st.session_state.rows):
                 with st.container(border=True):
@@ -344,24 +343,8 @@ with st.container(key='presentation_frame'):
                 st.rerun()
 
         default_band_caps = CLASSROOM_WIFI_CAPS if classroom_demo else DEFAULT_WIFI_CAPS
-        wifi_key_prefix = f'classroom_{st.session_state.classroom_wifi_revision}_' if classroom_demo else ''
-        with st.expander('Ajustes de Wi-Fi'):
-            model_wifi = st.checkbox('Comparar las dos bandas con capacidades supuestas',
-                                     value=classroom_demo, key=f'{wifi_key_prefix}model_wifi')
-            band_caps = {}
-            if model_wifi:
-                if classroom_demo:
-                    st.caption('El ejemplo parte con 20 Mbps en 2,4 GHz y 70 Mbps en 5 GHz según la señal supuesta.')
-                st.caption('Estas referencias son editables. Los equipos que usan 5 GHz suelen rendir mejor cerca del router.')
-                for col, (band, default) in zip(st.columns(2), default_band_caps.items()):
-                    with col:
-                        nominal = st.number_input(f'Capacidad supuesta {band} (Mbps)', min_value=0.1,
-                                                  value=default, key=f'{wifi_key_prefix}wifi_capacity_{band}')
-                        signal_index = CLASSROOM_SIGNAL_OPTIONS[band] if classroom_demo else 0
-                        signal = st.selectbox(f'Escenario de señal {band}', list(SIGNALS), index=signal_index,
-                                              key=f'{wifi_key_prefix}signal_{band}')
-                        band_caps[band] = nominal * SIGNALS[signal]
-
+        model_wifi = any(row['count'] and row['band'] in BANDS[:2] for row in rows)
+        band_caps = default_band_caps if model_wifi else {}
 
     with st.container(key='page_result'):
         summary = network_summary(rows, capacity, upload, band_caps)
@@ -370,16 +353,16 @@ with st.container(key='presentation_frame'):
         active = bool(summary['matrix'].sum())
         _, headline, explanation = verdict(items, active, incomplete_bands)
 
-        with st.container(border=True, key='slide_context'):
-            st.markdown(f"**{st.session_state.preset}**")
-            total_equipment = sum(row['count'] for row in rows)
-            download_note = 'descarga' if known else 'descarga hipotética'
-            upload_note = f'{upload:g} Mbps de subida' if upload is not None else 'subida por confirmar'
-            st.caption(f'{total_equipment} equipos · {capacity:g} Mbps de {download_note} · {upload_note}')
-            st.caption(f'Referencia: {reference_source}.')
         st.subheader('Resultado de la simulación')
         pending_reference = active and all(item['state'] == 'unknown' for item in items)
         with st.container(border=True, key='family_summary'):
+            with st.container(key='slide_context'):
+                st.markdown(f"**{st.session_state.preset}**")
+                total_equipment = sum(row['count'] for row in rows)
+                download_note = 'descarga' if known else 'descarga hipotética'
+                upload_note = f'{upload:g} Mbps de subida' if upload is not None else 'subida por confirmar'
+                st.caption(f'{total_equipment} equipos · {capacity:g} Mbps de {download_note} · {upload_note}')
+                st.caption(f'Referencia: {reference_source}.')
             st.markdown('### 🏠 Falta una referencia de velocidad' if pending_reference else f'### {headline}')
             if (all(item['state'] in ('good', 'tight') for item in items[:2])
                     and any(item['state'] == 'over' for item in items[2:])):
@@ -391,13 +374,15 @@ with st.container(key='presentation_frame'):
                 st.write(explanation)
 
             if active:
-                result_labels = {'download': 'Descarga', 'upload': 'Subida'}
-                statuses = []
-                for item in items:
-                    icon, label = STATES[item['state']]
-                    part = result_labels.get(item['key'], item['key'])
-                    statuses.append(f'{icon} **{part}** · {label}')
-                st.caption('  |  '.join(statuses))
+                result_labels = {'download': 'Descarga del plan', 'upload': 'Subida del plan'}
+                attention = [
+                    f"{STATES[item['state']][0]} {result_labels.get(item['key'], item['key'])}"
+                    for item in items if item['state'] in ('tight', 'over')
+                ]
+                if attention:
+                    st.caption('Necesitan atención: ' + ' · '.join(attention))
+                if incomplete_bands:
+                    st.caption('Falta conocer la banda de algunos equipos para completar el resultado del Wi-Fi.')
 
         baseline = improved = summary
         changes = []
@@ -426,12 +411,6 @@ with st.container(key='presentation_frame'):
 
             compare_wifi = model_wifi or band_proposal
             preview_caps = band_caps or default_band_caps
-            if classroom_demo and not model_wifi:
-                preview_caps = {
-                    band: nominal * list(SIGNALS.values())[CLASSROOM_SIGNAL_OPTIONS[band]]
-                    for band, nominal in CLASSROOM_WIFI_CAPS.items()
-                }
-
             if not (pause or lower or band_proposal):
                 if model_wifi:
                     recommend_wifi_step(rows, summary, capacity, upload, preview_caps, pause, lower, band_proposal)
@@ -493,75 +472,42 @@ with st.container(key='presentation_frame'):
                         recommend_wifi_step(rows, improved, capacity, upload, preview_caps, pause, lower, band_proposal)
 
                     comparisons = comparison_values(baseline, improved, known, compare_wifi)
-                    for i, (title, before_usage, after_usage) in enumerate(comparisons):
-                        if i % 2 == 0:
-                            st.markdown('##### Plan de internet' if i == 0 else '##### Wi-Fi de la casa')
-                            result_cols = st.columns(2)
-                        with result_cols[i % 2].container(border=True):
-                            st.markdown(f'**{title}**')
-                            show_usage_comparison(before_usage, after_usage)
-                            if after_usage is not None:
-                                icon, label = STATES[state(after_usage)]
-                                st.markdown(f'**{icon} {label}**')
-                            if before_usage is not None and after_usage is not None:
-                                if isclose(before_usage, after_usage):
-                                    st.caption('La carga queda igual.')
-                                elif after_usage < before_usage:
-                                    st.caption('La carga baja.')
-                                else:
-                                    st.caption('La carga sube.')
+                    for section, group in (('Plan de internet', comparisons[:2]),
+                                           ('Wi-Fi de la casa', comparisons[2:])):
+                        relevant = [
+                            (title, before, after) for title, before, after in group
+                            if (after or 0) > 100
+                            or (before is None) != (after is None)
+                            or (before is not None and after is not None and not isclose(before, after))
+                        ]
+                        if not relevant:
+                            continue
+                        st.markdown(f'##### {section}')
+                        for col, (title, before_usage, after_usage) in zip(st.columns(len(relevant)), relevant):
+                            with col.container(border=True):
+                                st.markdown(f'**{title}**')
+                                show_usage_comparison(before_usage, after_usage)
+                                if after_usage is not None:
+                                    icon, label = STATES[state(after_usage)]
+                                    st.markdown(f'**{icon} {label}**')
+                                if before_usage is not None and after_usage is not None:
+                                    if isclose(before_usage, after_usage):
+                                        st.caption('La carga queda igual.')
+                                    elif after_usage < before_usage:
+                                        st.caption('La carga baja.')
+                                    else:
+                                        st.caption('La carga sube.')
 
-        if active:
-            with st.expander('Ver detalle del resultado'):
-                for index, item in enumerate(items):
-                    if index == 0:
-                        st.markdown('#### Plan de internet · De internet al router y viceversa')
-                        cols = st.columns(2)
-                    elif index == 2:
-                        st.markdown('#### Wi-Fi de la casa · Entre el router y los equipos')
-                        st.write('El router reparte los datos por 2,4 GHz y 5 GHz. Los equipos que usan la misma banda '
-                                 'comparten su capacidad para enviar y recibir datos.')
-                        cols = st.columns(2)
-                    icon, label = STATES[item['state']]
-                    with cols[index % 2]:
-                        with st.container(border=True, key=f"family_card_{index}_{item['state']}"):
-                            st.markdown(f"#### {item['title']}")
-                            st.markdown(f'**{icon} {label}**')
-                            if item['key'] == 'download' and known:
-                                st.write(f"Los equipos necesitan recibir **{summary['down']:g} Mbps**. "
-                                         f"La referencia de descarga es **{capacity:g} Mbps**.")
-                            elif item['key'] == 'upload':
-                                if upload is None:
-                                    st.write(f"Tus equipos necesitan **{summary['up']:g} Mbps de subida**.")
-                                    st.caption('Haz el test en la primera pantalla o ingresa la subida en los datos manuales.')
-                                else:
-                                    reference = 'del ejemplo' if classroom_demo else 'de referencia'
-                                    st.write(f"Necesitas **{summary['up']:g} Mbps** de los **{upload:g} Mbps** de subida "
-                                             f"{reference} (**{summary['up_usage']:.1f}%**).")
-                            elif item['key'] in BANDS[:2]:
-                                band = summary['bands'][item['key']]
-                                st.write(f"Los equipos de esta banda necesitan mover **{band['traffic']:g} Mbps** "
-                                         f"entre lo que envían y reciben. Con la señal del ejemplo, "
-                                         f"esta banda puede mover **{band['capacity']:g} Mbps**.")
-                            if item['state'] in ('tight', 'over'):
-                                st.caption(item['tip'])
-                if incomplete_bands:
-                    st.caption('Asigna las bandas pendientes para completar la comparación Wi-Fi.')
-
-        with st.expander('🔢 Quiero ver los números'):
-            st.caption('El 100% significa que se necesita toda la capacidad. Si el uso estimado supera el 100%, '
-                       'las actividades juntas necesitan más capacidad de la que hay.')
+        with st.expander('Detalle y números'):
+            st.caption('Por encima del 100%, las actividades juntas necesitan más capacidad de la disponible.')
             st.markdown('#### Plan de internet')
             a, b, c = st.columns(3)
             a.metric('Descarga que necesitan los equipos', f"{summary['down']:g} Mbps")
             b.metric('Velocidad de descarga de referencia', f'{capacity:g} Mbps')
             c.metric('Uso estimado de descarga', f"{summary['down_usage']:.1f}%")
-            if known:
-                st.caption('Descarga es lo que llega de internet a tu casa, como una serie o un juego.')
-            else:
+            if not known:
                 st.caption('La descarga de referencia es hipotética. Sirve para probar el escenario.')
-            st.write(f"**Subida.** Tus equipos necesitan enviar **{summary['up']:g} Mbps** a internet, "
-                     "por ejemplo para videollamadas o cámaras.")
+            st.write(f"**Subida.** Tus equipos necesitan enviar **{summary['up']:g} Mbps** a internet.")
             if upload is not None:
                 label = 'Subida del ejemplo' if classroom_demo else 'Subida de referencia'
                 st.write(f"{label}: **{upload:g} Mbps** · uso estimado: **{summary['up_usage']:.1f}%**.")
@@ -569,8 +515,8 @@ with st.container(key='presentation_frame'):
                 st.write('Subida de referencia: pendiente. Falta ese dato para saber si alcanza.')
             if model_wifi:
                 st.markdown('#### Wi-Fi de la casa')
-                st.caption('Cada banda comparte su capacidad entre los equipos que la usan. '
-                           'Aquí se suma lo que esos equipos envían y reciben por Wi-Fi.')
+                st.caption('Se suma lo que los equipos envían y reciben en cada banda. '
+                           'Las capacidades son supuestos de la simulación.')
                 for band in BANDS[:2]:
                     data = summary['bands'][band]
                     st.write(f"**{band}.** Los equipos necesitan **{data['traffic']:g} Mbps** y la banda tiene "

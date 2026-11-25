@@ -113,23 +113,18 @@ async function verify(page) {
     await choose(preset, scenario);
     await checkRows(saturatedRows);
     await goTo(3);
-    const bandCard = page.locator('[class*="st-key-family_card_"]').filter({ hasText: 'Equipos en 2,4 GHz' });
-    if (!await bandCard.isVisible()) {
-      await page.getByText('Ver detalle del resultado', { exact: true }).click();
-    }
-    for (const band of ['2,4 GHz', '5 GHz']) {
-      await page.locator('[class*="st-key-family_card_"]').filter({ hasText: 'Equipos en ' + band })
-        .getByText('🔴 No alcanza en este ejemplo', { exact: true }).waitFor();
-    }
-    await page.getByText(`Necesitas 6.4 Mbps de los ${upload} Mbps de subida del ejemplo (${usage}).`,
-      { exact: true }).waitFor();
+    const overview = page.locator('.st-key-family_summary');
+    await overview.getByText(/Necesitan atención:.*2,4 GHz.*5 GHz/).waitFor();
+    await page.getByTestId('stExpander').filter({hasText:'Detalle y números'})
+      .getByText(usage,{exact:true}).waitFor({state:'attached'});
   }
 
   await choose(preset, afternoon);
   await checkRows(presets[afternoon]);
   await choose('¿Cuántos megas tiene tu plan?', '20 Mbps');
   await goTo(3);
-  await page.getByText('🔢 Quiero ver los números', { exact: true }).click();
+  const detail = page.getByText('Detalle y números', { exact: true });
+  if (!await page.getByText('Uso estimado de descarga',{exact:true}).isVisible()) await detail.click();
   await metric('Descarga que necesitan los equipos', '10.5 Mbps');
   await metric('Uso estimado de descarga', '52.5%');
   await choose('¿Cuántos megas tiene tu plan?', 'Ingresar otra velocidad');
@@ -141,7 +136,7 @@ async function verify(page) {
   await openManual();
   await page.getByText('Conozco mi velocidad de subida', { exact: true }).click();
   await setNumber('Subida de referencia (Mbps)', 5);
-  const numbers = page.getByTestId('stExpander').filter({ hasText: 'Quiero ver los números' });
+  const numbers = page.getByTestId('stExpander').filter({ hasText: 'Detalle y números' });
   await numbers.getByText('8.25 Mbps', { exact: true }).waitFor({ state: 'attached' });
   await numbers.getByText('165.0%', { exact: true }).waitFor({ state: 'attached' });
   await choose('Conexión del grupo 2', 'Cable de red');

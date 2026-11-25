@@ -17,7 +17,7 @@ class AppTests(unittest.TestCase):
         self.assertEqual(app.metric[2].value, '52.5%')
         app.number_input(key='custom_capacity').set_value(10).run()
         self.assertEqual(app.metric[2].value, '105.0%')
-        self.assertTrue(any('No alcanza en este ejemplo' in m.value for m in app.markdown))
+        self.assertTrue(any('Necesitan atención' in c.value for c in app.caption))
         self.assertFalse(app.exception)
 
     def test_solutions_and_rows(self):
@@ -36,7 +36,7 @@ class AppTests(unittest.TestCase):
         app.button(key='add').click().run()
         app.toggle(key='manual_reference').set_value(True).run()
         app.selectbox(key='plan').select('No sé mi velocidad').run()
-        self.assertIn('⚪ Falta un dato', [m.value.strip('*') for m in app.markdown])
+        self.assertIn('### 🏠 Falta una referencia de velocidad', [m.value for m in app.markdown])
         self.assertFalse(app.exception)
 
     def test_bands_and_camera_preset(self):
@@ -46,8 +46,8 @@ class AppTests(unittest.TestCase):
         app.toggle(key='manual_reference').set_value(True).run()
         app.checkbox(key='know_upload').check().run()
         app.number_input(key='upload_capacity').set_value(5).run()
-        self.assertTrue(any('165.0%' in m.value and 'de subida' in m.value for m in app.markdown))
-        self.assertTrue(any('No alcanza en este ejemplo' in m.value for m in app.markdown))
+        self.assertTrue(any('165.0%' in m.value and 'Subida de referencia' in m.value for m in app.markdown))
+        self.assertTrue(any('Necesitan atención' in c.value for c in app.caption))
         original = app.session_state['rows']
         app.button(key='try_bands').click().run()
         self.assertEqual(app.session_state['rows'], original)

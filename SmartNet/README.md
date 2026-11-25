@@ -6,7 +6,7 @@ Aplicación educativa para hogares en Chile: medición orientativa desde el nave
 
 Abre [SmartNet en Streamlit](https://trabajo-smarnet1-vcvluy6e6zhwpk7u5tnapy.streamlit.app/) en el navegador. La app pública requiere internet y se puede usar sin instalar Python. Si Streamlit muestra que la aplicación está en reposo, pulsa **Yes, get this app back up!** y espera a que cargue.
 
-Para la demostración, elige **Wi-Fi saturado · Plan simétrico 300/300 Mbps** o **Wi-Fi saturado · Plan asimétrico 300/10 Mbps** en la segunda pantalla. Ambos cargan el mismo hogar y cambian solo la referencia de subida. Revisa las dos bandas y la subida en la pantalla final. Abre **Quiero ver los números** para mostrar los porcentajes. Usa **Siguiente** arriba o abajo de la pantalla. Al final, **Descargar resumen como imagen** guarda el escenario y las mejoras probadas en un PNG.
+Para la demostración, elige **Wi-Fi saturado · Plan simétrico 300/300 Mbps** o **Wi-Fi saturado · Plan asimétrico 300/10 Mbps** en la segunda pantalla. Ambos cargan el mismo hogar y cambian solo la referencia de subida. Revisa las dos bandas y la subida en la pantalla final. Abre **Detalle y números** para mostrar los porcentajes. Usa **Siguiente** arriba o abajo de la pantalla. Al final, **Descargar resumen como imagen** guarda el escenario y las mejoras probadas en un PNG.
 
 ## Windows
 
@@ -34,7 +34,7 @@ streamlit run app.py --server.headless true
 ## Flujo familiar
 
 1. **Conexión.** El test está abierto al entrar. Puedes usarlo, ingresar las velocidades de tu plan o seguir a un ejemplo con un plan predefinido.
-2. **Equipos.** Elige un ejemplo o empieza desde cero. Los equipos se muestran directamente. Puedes editar sus actividades, bandas y capacidades supuestas.
+2. **Equipos.** Elige un ejemplo o empieza desde cero. Los equipos se muestran directamente. Puedes editar sus actividades y bandas. La simulación usa capacidades supuestas, visibles en el resumen.
 3. **Resultado y mejoras.** Consulta descarga, subida y bandas. Compara el antes y el después al pausar descargas, cambiar de 4K a HD o repartir equipos entre bandas. La propuesta conserva los equipos conectados por cable.
 
 Incluye celulares, PC, TV, consolas, cámaras, tablets, TV Box, parlantes, ampolletas/enchufes, impresoras y aspiradoras robot. El tipo organiza la matriz; es la **actividad elegida** la que determina la demanda.
@@ -103,7 +103,7 @@ Variables opcionales: `PLAYWRIGHT_MODULE` (ruta al módulo), `CHROMIUM_PATH` (ej
 
 La vista principal muestra un resumen de la casa y tarjetas: recibir datos (series/navegación), enviar datos (cámaras/llamadas) y, si se activa, cada banda. Usa colores e indicaciones escritas: hay espacio, está justito, no alcanza en el ejemplo o falta un dato. No presenta un estado global verde si faltan subida o bandas necesarias; un problema conocido se muestra aunque falten otros datos.
 
-Los indicadores de demanda están en **Quiero ver los números**. Las matrices y fórmulas se documentan aquí para preparar la presentación.
+Los indicadores de demanda están en **Detalle y números**. Las matrices y fórmulas se documentan aquí para preparar la presentación.
 
 Comprobación de la vista familiar en navegador, con servidor iniciado:
 

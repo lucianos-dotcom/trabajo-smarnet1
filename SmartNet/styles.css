@@ -24,10 +24,6 @@
 
 [data-testid="stMetric"] { border: 1px solid #94a3b8; border-radius: 16px; padding: 16px; }
 div.stButton > button { border-radius: 12px; min-height: 44px; }
-[class*="st-key-family_card_"][class*="_good"] { border-top: 5px solid #22c55e; }
-[class*="st-key-family_card_"][class*="_tight"] { border-top: 5px solid #eab308; }
-[class*="st-key-family_card_"][class*="_over"] { border-top: 5px solid #ef4444; }
-[class*="st-key-family_card_"][class*="_unknown"] { border-top: 5px solid #94a3b8; }
 .st-key-family_summary { border-left: 6px solid #14b8a6; }
 .st-key-improvements { border-top: 5px solid #0d9488; }
 .st-key-improvements [data-testid="stMetric"] { border-color: #0d9488; }
@@ -76,9 +72,6 @@ div.stButton > button { border-radius: 12px; min-height: 44px; }
     border-left: 5px solid #0d9488;
 }
 .st-key-presentation_nav [data-testid="stProgress"] { margin-bottom: .25rem; }
-.st-key-slide_context {
-    border-left: 4px solid #0d9488;
-}
 
 @media (prefers-reduced-motion: no-preference) {
     .st-key-presentation_frame .st-key-page_connection,
@@ -117,3 +110,9 @@ div.stButton > button { border-radius: 12px; min-height: 44px; }
 .smartnet-speed-bars .smartnet-bar-fill.descarga { background: #1466a0; }
 .smartnet-speed-bars .smartnet-bar-fill.subida { background: #087f74; }
 .smartnet-speed-detail { font-size: .85rem; margin: .12rem 0 .36rem; }
+
+.st-key-band_help [data-testid="stPopoverButton"] {
+    min-height: 30px;
+    padding: .12rem .45rem;
+    border-color: transparent;
+}
