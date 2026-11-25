@@ -30,10 +30,11 @@ class AppTests(unittest.TestCase):
         self.assertFalse(app.exception)
         app.selectbox(key='preset').select('Empezar desde cero').run()
         self.assertEqual(app.metric[0].value, '0 Mbps')
+        app.button(key='add').click().run()
         app.selectbox(key='plan').select('No sé mi velocidad').run()
-        self.assertTrue(any('Falta saber la velocidad' in m.value for m in app.info))
+        self.assertIn('⚪ Falta un dato', [m.value.strip('*') for m in app.markdown])
         app.checkbox(key='use_test').check().run()
-        self.assertFalse(any('Falta saber la velocidad' in m.value for m in app.info))
+        self.assertTrue(app.checkbox(key='use_test').value)
         self.assertFalse(app.exception)
 
     def test_bands_and_camera_preset(self):
@@ -42,9 +43,11 @@ class AppTests(unittest.TestCase):
         app.checkbox(key='know_upload').check().run()
         app.number_input(key='upload_capacity').set_value(5).run()
         self.assertTrue(any('No alcanza en este ejemplo' in m.value for m in app.markdown))
-        app.checkbox(key='model_wifi').check().run()
-        next(box for box in app.selectbox if box.label == 'Conexión del grupo 1').select('2,4 GHz').run()
-        app.checkbox(key='move').check().run()
+        app.button(key='auto_bands').click().run()
+        self.assertEqual([row['band'] for row in app.session_state['rows']],
+                         ['2,4 GHz', '2,4 GHz', '5 GHz', '2,4 GHz'])
+        self.assertTrue(app.checkbox(key='model_wifi').value)
+        self.assertFalse(app.latex)
         self.assertFalse(app.exception)
 
     def test_import_speed_result(self):

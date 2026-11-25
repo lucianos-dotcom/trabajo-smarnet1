@@ -45,6 +45,16 @@ UPLOAD_RATES = np.array([0.1, 0.1, 1.5, 0.1, 0.5, 0.5, 2, 0.02, 0.05, 10, 0.01])
 BANDS = ['2,4 GHz', '5 GHz', 'Cable de red', 'No sé la banda']
 SIGNALS = {'Cerca y sin obstáculos (100%)': 1.0, 'Con paredes o distancia (50%)': 0.5, 'Lejos o con muchos obstáculos (25%)': 0.25}
 
+def suggest_bands(rows):
+    """Suggest editable bands for the simulation using only device type."""
+    devices_for_24 = {DEVICES[4], *DEVICES[7:]}
+    return [
+        row.copy() if row.get('band') == BANDS[2]
+        else dict(row, band=BANDS[0] if row['device'] in devices_for_24 else BANDS[1])
+        for row in rows
+    ]
+
+
 def network_summary(rows, download, upload, band_capacities):
     """Separate shared Internet constraints from hypothetical local Wi-Fi capacity.
 
