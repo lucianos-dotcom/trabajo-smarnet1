@@ -67,13 +67,6 @@ def remove_row(index):
     rows.pop(index)
     replace_rows(rows)
 
-def apply_measurement():
-    result = st.session_state.last_speed
-    st.session_state.measured = float(result['download'])
-    st.session_state.upload_capacity = float(result['upload'])
-    st.session_state.use_test = True
-    st.session_state.know_upload = True
-
 def show_speed_result(result):
     download, upload = result['download'], result['upload']
     scale = max(download, upload)
@@ -254,8 +247,6 @@ with st.container(key='presentation_frame'):
                 result = st.session_state.last_speed
                 with speed_overview:
                     show_speed_result(result)
-                    if not classroom_demo:
-                        st.button('Usar esta medición en mi simulación', on_click=apply_measurement, key='apply_speed')
                 if result['latency'] >= 150:
                     st.info('La respuesta HTTP fue alta en esta prueba. Puede influir en actividades interactivas; repite cerca del router o con cable. No permite atribuir el problema al Wi-Fi por sí sola.')
                 with st.expander('Detalles de la medición'):
@@ -269,32 +260,53 @@ with st.container(key='presentation_frame'):
                         }), hide_index=True)
             st.caption('Mide la conexión de este navegador mediante Cloudflare y guarda el resultado durante la sesión.')
 
+        manual_reference = False
+        manual_keys = ('plan', 'trial_capacity', 'custom_capacity', 'know_upload', 'upload_capacity')
         if classroom_demo:
-            # Keep the manual widget values while the demonstration hides those controls.
-            for key in ('plan', 'trial_capacity', 'custom_capacity', 'use_test',
-                        'measured', 'know_upload', 'upload_capacity'):
+            manual_keys += ('manual_reference',)
+        else:
+            with st.expander('Usar datos de mi plan o ingresarlos a mano'):
+                manual_reference = st.toggle('Usar datos manuales', key='manual_reference')
+                if manual_reference:
+                    plan = st.selectbox('¿Cuántos megas tiene tu plan?', [
+                        'No sé mi velocidad', 'Ingresar otra velocidad', '20 Mbps', '100 Mbps', '300 Mbps',
+                        '500 Mbps', '600 Mbps', '800 Mbps', '940 Mbps', '1000 Mbps',
+                    ], index=4, key='plan')
+                    known = plan != 'No sé mi velocidad'
+                    if not known:
+                        capacity = st.number_input('Velocidad hipotética para probar (Mbps)', min_value=0.1,
+                                                   value=100.0, key='trial_capacity')
+                    elif plan == 'Ingresar otra velocidad':
+                        capacity = st.number_input('Descarga de referencia (Mbps)', min_value=0.1,
+                                                   value=20.0, key='custom_capacity')
+                    else:
+                        capacity = float(plan.split()[0])
+                    know_upload = st.checkbox('Conozco mi velocidad de subida', key='know_upload')
+                    upload = st.number_input('Subida de referencia (Mbps)', min_value=0.001, value=20.0,
+                                             format='%.2f', key='upload_capacity') if know_upload else None
+
+        if not manual_reference:
+            # Preserve entered values while the corresponding controls are hidden.
+            for key in manual_keys:
                 if key in st.session_state:
                     st.session_state[key] = st.session_state[key]
-            capacity = 300.0
-            upload = CLASSROOM_UPLOADS[st.session_state.preset]
-            known = True
-            st.write(f"Plan del ejemplo: **{capacity:g} Mbps de descarga** y **{upload:g} Mbps de subida**.")
-        else:
-            plan = st.selectbox('¿Cuántos megas tiene tu plan?', ['No sé mi velocidad', 'Ingresar otra velocidad', '20 Mbps', '100 Mbps', '300 Mbps', '500 Mbps', '600 Mbps', '800 Mbps', '940 Mbps', '1000 Mbps'], index=4, key='plan')
-            known = plan != 'No sé mi velocidad'
-            if not known:
-                capacity = st.number_input('Velocidad hipotética para probar (Mbps)', min_value=0.1, value=100.0, key='trial_capacity')
-            elif plan == 'Ingresar otra velocidad':
-                capacity = st.number_input('Descarga de referencia (Mbps)', min_value=0.1, value=20.0, key='custom_capacity')
+            measured = st.session_state.get('last_speed')
+            if classroom_demo:
+                capacity, upload, known = 300.0, CLASSROOM_UPLOADS[st.session_state.preset], True
+                reference_source = 'Plan del ejemplo'
+                st.write(f"Plan del ejemplo: **{capacity:g} Mbps de descarga** y **{upload:g} Mbps de subida**.")
+            elif valid_result(measured):
+                capacity, upload, known = float(measured['download']), float(measured['upload']), True
+                reference_source = 'Medición del test de SmartNet'
+                with speed_overview:
+                    st.success('Esta medición se usa automáticamente en la simulación.')
             else:
-                capacity = float(plan.split()[0])
-            use_test = st.checkbox('Usar una velocidad medida en vez de la del plan', key='use_test')
-            if use_test:
-                capacity = st.number_input('Descarga medida (Mbps)', min_value=0.001, value=100.0, format='%.2f', key='measured')
-                known = True
-            know_upload = st.checkbox('Conozco mi velocidad de subida (o la obtuve en el test)', key='know_upload')
-            upload = st.number_input('Subida de referencia (Mbps)', min_value=0.001, value=20.0, format='%.2f', key='upload_capacity') if know_upload else None
-
+                capacity, upload, known = 300.0, None, False
+                reference_source = 'Descarga hipotética'
+                st.caption('Si sigues sin medir, usaremos 300 Mbps de descarga como ejemplo. La subida quedará pendiente.')
+        else:
+            reference_source = 'Datos ingresados a mano'
+            st.caption('Simulación con datos ingresados a mano.')
 
     with st.container(key='page_equipment'):
         st.selectbox('Prueba un ejemplo o arma tu casa', list(SCENARIOS), key='preset', on_change=load_preset)
@@ -365,13 +377,17 @@ with st.container(key='presentation_frame'):
             download_note = 'descarga' if known else 'descarga hipotética'
             upload_note = f'{upload:g} Mbps de subida' if upload is not None else 'subida por confirmar'
             st.caption(f'{total_equipment} equipos · {capacity:g} Mbps de {download_note} · {upload_note}')
+            st.caption(f'Referencia: {reference_source}.')
         st.subheader('Resultado de la simulación')
+        pending_reference = active and all(item['state'] == 'unknown' for item in items)
         with st.container(border=True, key='family_summary'):
-            st.markdown(f'### {headline}')
+            st.markdown('### 🏠 Falta una referencia de velocidad' if pending_reference else f'### {headline}')
             if (all(item['state'] in ('good', 'tight') for item in items[:2])
                     and any(item['state'] == 'over' for item in items[2:])):
                 st.write('El plan alcanza para enviar y recibir los datos. En este ejemplo, el problema está '
                          'en el Wi-Fi entre el router y los equipos.')
+            elif pending_reference:
+                st.write('Haz el test en la primera pantalla o ingresa los datos de tu plan para saber si alcanza.')
             else:
                 st.write(explanation)
 
@@ -518,8 +534,7 @@ with st.container(key='presentation_frame'):
                             elif item['key'] == 'upload':
                                 if upload is None:
                                     st.write(f"Tus equipos necesitan **{summary['up']:g} Mbps de subida**.")
-                                    st.caption('En la primera pantalla, marca «Conozco mi velocidad de subida» '
-                                               'e ingresa el valor, o usa el test de velocidad.')
+                                    st.caption('Haz el test en la primera pantalla o ingresa la subida en los datos manuales.')
                                 else:
                                     reference = 'del ejemplo' if classroom_demo else 'de referencia'
                                     st.write(f"Necesitas **{summary['up']:g} Mbps** de los **{upload:g} Mbps** de subida "

@@ -11,6 +11,7 @@ class AppTests(unittest.TestCase):
         self.assertFalse(app.exception)
         self.assertNotIn('Ejemplo de la asignatura', app.selectbox(key='preset').options)
         app.selectbox(key='preset').select('Una tarde en casa').run()
+        app.toggle(key='manual_reference').set_value(True).run()
         app.selectbox(key='plan').select('Ingresar otra velocidad').run()
         self.assertEqual(app.metric[0].value, '10.5 Mbps')
         self.assertEqual(app.metric[2].value, '52.5%')
@@ -33,16 +34,16 @@ class AppTests(unittest.TestCase):
         app.selectbox(key='preset').select('Empezar desde cero').run()
         self.assertEqual(app.metric[0].value, '0 Mbps')
         app.button(key='add').click().run()
+        app.toggle(key='manual_reference').set_value(True).run()
         app.selectbox(key='plan').select('No sé mi velocidad').run()
         self.assertIn('⚪ Falta un dato', [m.value.strip('*') for m in app.markdown])
-        app.checkbox(key='use_test').check().run()
-        self.assertTrue(app.checkbox(key='use_test').value)
         self.assertFalse(app.exception)
 
     def test_bands_and_camera_preset(self):
         app=self.app()
         app.selectbox(key='preset').select('Casa con cámaras y dispositivos inteligentes').run()
         self.assertTrue(any('Subida de referencia: pendiente' in m.value for m in app.markdown))
+        app.toggle(key='manual_reference').set_value(True).run()
         app.checkbox(key='know_upload').check().run()
         app.number_input(key='upload_capacity').set_value(5).run()
         self.assertTrue(any('165.0%' in m.value and 'de subida' in m.value for m in app.markdown))
@@ -57,6 +58,7 @@ class AppTests(unittest.TestCase):
 
     def test_classroom_plans(self):
         app = self.app()
+        app.toggle(key='manual_reference').set_value(True).run()
         app.selectbox(key='plan').select('500 Mbps').run()
         for plan, upload, usage in [
             ('Wi-Fi saturado · Plan simétrico 300/300 Mbps', 300, '2.1%'),
@@ -93,13 +95,18 @@ class AppTests(unittest.TestCase):
         self.assertTrue(any('las dos bandas tienen capacidad' in item.value for item in app.success))
         self.assertEqual(app.session_state['rows'], original)
 
-    def test_import_speed_result(self):
+    def test_speed_result_is_used_automatically(self):
         app=self.app()
         app.session_state['last_speed']=dict(download=42.0, upload=7.0, latency=20.0, jitter=2.0, id='sample', timestamp='2026-11-04T00:00:00Z')
         app.session_state['speed_history']=[]
         app.run()
-        app.button(key='apply_speed').click().run()
-        self.assertEqual(app.number_input(key='measured').value,42)
-        self.assertEqual(app.number_input(key='upload_capacity').value,7)
-        self.assertTrue(app.checkbox(key='use_test').value)
+        self.assertEqual(app.metric[1].value, '42 Mbps')
+        self.assertTrue(any('Subida de referencia: **7 Mbps**' in item.value for item in app.markdown))
+        app.toggle(key='manual_reference').set_value(True).run()
+        app.selectbox(key='plan').select('500 Mbps').run()
+        self.assertEqual(app.metric[1].value, '500 Mbps')
+        app.toggle(key='manual_reference').set_value(False).run()
+        self.assertEqual(app.metric[1].value, '42 Mbps')
+        app.toggle(key='manual_reference').set_value(True).run()
+        self.assertEqual(app.selectbox(key='plan').value, '500 Mbps')
         self.assertFalse(app.exception)

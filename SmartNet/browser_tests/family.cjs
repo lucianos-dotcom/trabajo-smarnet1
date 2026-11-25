@@ -10,7 +10,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     const next=page.getByRole('button',{name:'Siguiente →',exact:true});
     await next.click();
     await page.getByRole('button',{name:'Ver resultado →',exact:true}).click();
-    const headline=page.getByRole('heading',{name:'🏠 Vamos bien, pero falta una pista',exact:true});
+    const headline=page.getByRole('heading',{name:'🏠 Falta una referencia de velocidad',exact:true});
     await headline.waitFor();
     const numbers=page.getByText('🔢 Quiero ver los números',{exact:true});
     await numbers.waitFor();

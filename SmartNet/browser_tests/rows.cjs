@@ -55,8 +55,17 @@ async function verify(page) {
       await step(current).waitFor();
     }
   };
+  const openManual = async () => {
+    await goTo(1);
+    const toggle = page.getByText('Usar datos manuales', { exact: true });
+    if (!await toggle.isVisible()) {
+      await page.getByText('Usar datos de mi plan o ingresarlos a mano', { exact: true }).click();
+    }
+    if (!await box('¿Cuántos megas tiene tu plan?').isVisible()) await toggle.click();
+  };
   const choose = async (label, option) => {
-    await goTo(label === '¿Cuántos megas tiene tu plan?' ? 1 : 2);
+    if (label === '¿Cuántos megas tiene tu plan?') await openManual();
+    else await goTo(2);
     const previous = label === 'Prueba un ejemplo o arma tu casa'
       ? await page.locator(scenarioEditor).getAttribute('class')
       : null;
@@ -132,8 +141,8 @@ async function verify(page) {
 
   await choose(preset, cameras);
   await checkRows(presets[cameras]);
-  await goTo(1);
-  await page.getByText('Conozco mi velocidad de subida (o la obtuve en el test)', { exact: true }).click();
+  await openManual();
+  await page.getByText('Conozco mi velocidad de subida', { exact: true }).click();
   await setNumber('Subida de referencia (Mbps)', 5);
   const numbers = page.getByTestId('stExpander').filter({ hasText: 'Quiero ver los números' });
   await numbers.getByText('8.25 Mbps', { exact: true }).waitFor({ state: 'attached' });
