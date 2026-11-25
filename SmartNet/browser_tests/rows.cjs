@@ -31,7 +31,8 @@ const presets = {
 };
 
 async function verify(page) {
-  const box = label => page.getByTestId('stSelectbox').filter({ hasText: label });
+  const box = label => page.locator('[data-testid="stElementContainer"][data-stale="false"]')
+    .getByTestId('stSelectbox').filter({ hasText: label });
   const number = label => page.getByRole('spinbutton', { name: label, exact: true });
   const remove = page.getByRole('button', { name: 'Quitar este grupo', exact: true });
   const add = page.getByRole('button', { name: '＋ Agregar otro equipo', exact: true });
