@@ -59,7 +59,10 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     const illustration=overview.locator('.st-key-result_art img');
     await illustration.waitFor({state:'visible'});
     await illustration.evaluate(img=>img.decode());
-    assert((await illustration.boundingBox()).height<=112);
+    await slides.waitForFunction(() => {
+      const image = document.querySelector('.st-key-result_art img');
+      return image?.complete && image.naturalWidth > 0 && image.getBoundingClientRect().height <= 113;
+    });
     const details=slides.getByText('Detalle y números',{exact:true}).last();
     assert((await stage('Prueba una mejora').boundingBox()).y < (await details.boundingBox()).y);
     const metrics=slides.getByText('Uso estimado de descarga',{exact:true});
