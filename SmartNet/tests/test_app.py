@@ -79,9 +79,15 @@ class AppTests(unittest.TestCase):
         app.selectbox(key='preset').select('Wi-Fi saturado · Plan asimétrico 300/10 Mbps').run()
         original = app.session_state['rows']
         app.button(key='try_bands').click().run()
-        self.assertTrue(any('134.1%' in item.value for item in app.markdown))
+        self.assertTrue(any('134.1%' in item.value and 'Los equipos llevan su tráfico' in item.value
+                            for item in app.markdown))
         self.assertTrue(app.warning)
+        self.assertTrue(any('Deja la descarga para después' in item.value for item in app.info))
+        app.button(key='try_bands').click().run()
         app.checkbox(key='pause').check().run()
+        self.assertTrue(any('Prueba cambiar equipos de banda' in item.value and '35.9% a 62.0%' in item.value
+                            for item in app.info))
+        app.button(key='try_bands').click().run()
         self.assertTrue(any('62.0%' in item.value for item in app.markdown))
         self.assertTrue(any('las dos bandas tienen capacidad' in item.value for item in app.success))
         self.assertEqual(app.session_state['rows'], original)

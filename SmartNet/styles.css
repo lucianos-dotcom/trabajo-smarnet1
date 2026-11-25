@@ -1,0 +1,73 @@
+.block-container {
+    max-width: 1180px;
+    padding-top: 2rem;
+}
+
+.st-key-hero {
+    color: #f8fafc;
+    background: radial-gradient(ellipse at top right, #216b73 0%, transparent 58%),
+                linear-gradient(125deg, #10253a, #153d4c);
+    border-radius: 24px;
+    padding: clamp(1.05rem, 3.7vw, 2.5rem);
+    margin-bottom: .6rem;
+}
+.st-key-hero h1 { color: inherit; padding-top: 0; text-wrap: balance; }
+.st-key-hero p { color: #e2f7f7; }
+.smartnet-route { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.smartnet-route span {
+    border: 1px solid #78aab4;
+    border-radius: 999px;
+    padding: .2rem .65rem;
+    color: #f8fafc;
+    font-size: .9rem;
+}
+
+[data-testid="stMetric"] { border: 1px solid #94a3b8; border-radius: 16px; padding: 16px; }
+div.stButton > button { border-radius: 12px; min-height: 44px; }
+[class*="st-key-family_card_"][class*="_good"] { border-top: 5px solid #22c55e; }
+[class*="st-key-family_card_"][class*="_tight"] { border-top: 5px solid #eab308; }
+[class*="st-key-family_card_"][class*="_over"] { border-top: 5px solid #ef4444; }
+[class*="st-key-family_card_"][class*="_unknown"] { border-top: 5px solid #94a3b8; }
+.st-key-family_summary { border-left: 6px solid #14b8a6; }
+.st-key-improvements { border-top: 5px solid #0d9488; }
+.st-key-improvements [data-testid="stMetric"] { border-color: #0d9488; }
+.st-key-action_pause { border-top: 4px solid #2563eb; }
+.st-key-action_hd { border-top: 4px solid #7c3aed; }
+.st-key-action_bands { border-top: 4px solid #0d9488; }
+.st-key-action_pause, .st-key-action_hd, .st-key-action_bands { min-height: 12rem; }
+
+.smartnet-bars { display: grid; gap: .55rem; margin: .2rem 0 .55rem; }
+.smartnet-bar-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: .5rem;
+    font-size: .9rem;
+}
+.smartnet-bar-track {
+    display: block;
+    position: relative;
+    background: #dbe5eb;
+    border: 1px solid #94a3b8;
+    border-radius: 999px;
+    height: .75rem;
+    margin-top: .22rem;
+}
+.smartnet-bar-fill { display: block; height: 100%; border-radius: inherit; }
+.smartnet-bar-fill.good { background: #087f74; }
+.smartnet-bar-fill.tight { background: #a65a00; }
+.smartnet-bar-fill.over { background: #bd3049; }
+.smartnet-bar-limit {
+    display: block;
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 2px;
+    background: #172b40;
+    box-shadow: 0 0 0 1px #f8fafc;
+}
+
+@media (max-width: 640px) {
+    .st-key-action_pause, .st-key-action_hd, .st-key-action_bands { min-height: 0; }
+    .st-key-hero { border-radius: 16px; }
+}
