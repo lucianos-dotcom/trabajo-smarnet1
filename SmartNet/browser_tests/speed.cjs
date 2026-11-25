@@ -31,6 +31,8 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await component.getByText('Prueba completa:',{exact:false}).waitFor({timeout:30000});
     const chart=page.getByRole('img',{name:/^Descarga: .* Mbps · Subida: .* Mbps$/});
     await chart.waitFor();
+    const iframe=page.locator('iframe[src*="smartnet_speed"]');
+    assert((await chart.boundingBox()).y < (await iframe.boundingBox()).y);
     const chartLabel=await chart.getAttribute('aria-label');
     await page.getByText(/^Tiempo de respuesta: .* ms$/).waitFor();
     await page.getByRole('button',{name:'Usar esta medición en mi simulación'}).waitFor();

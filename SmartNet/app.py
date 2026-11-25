@@ -240,6 +240,7 @@ with st.container(key='presentation_frame'):
         classroom_demo = st.session_state.preset in CLASSROOM_UPLOADS
         with st.container(border=True):
             st.markdown('#### 📶 Test de velocidad')
+            speed_overview = st.container(key='speed_overview')
             location = st.selectbox('¿Dónde estás haciendo la prueba?', ['Donde noto lentitud', 'Cerca del router', 'Con cable de red', 'Otro lugar'], key='test_location')
             result = render_speed_test(location)
             if valid_result(result):
@@ -251,11 +252,12 @@ with st.container(key='presentation_frame'):
                     st.session_state.speed_history = history[-5:]
             if 'last_speed' in st.session_state:
                 result = st.session_state.last_speed
-                show_speed_result(result)
+                with speed_overview:
+                    show_speed_result(result)
+                    if not classroom_demo:
+                        st.button('Usar esta medición en mi simulación', on_click=apply_measurement, key='apply_speed')
                 if result['latency'] >= 150:
                     st.info('La respuesta HTTP fue alta en esta prueba. Puede influir en actividades interactivas; repite cerca del router o con cable. No permite atribuir el problema al Wi-Fi por sí sola.')
-                if not classroom_demo:
-                    st.button('Usar esta medición en mi simulación', on_click=apply_measurement, key='apply_speed')
                 with st.expander('Detalles de la medición'):
                     st.caption(f"Fecha UTC: {result['timestamp']}. Variación entre respuestas HTTP: "
                                f"{result['jitter']:.0f} ms. La prueba mide tiempos de respuesta HTTP.")
@@ -305,6 +307,16 @@ with st.container(key='presentation_frame'):
                 equipment = sum(row['count'] for row in current_rows())
                 st.caption(f'Equipos en este escenario: {equipment}.')
             st.caption('Agrupa los equipos que hacen lo mismo y usan la misma conexión.')
+            with st.popover('❔ Cómo saber la banda de un equipo'):
+                st.markdown('**Revisa el equipo o la lista de conectados de tu router.**')
+                st.write('**Windows.** Ve a Configuración → Red e Internet → Wi-Fi. Abre las propiedades '
+                         'de la red conectada y busca «Banda de red».')
+                st.write('**Android.** Abre los detalles de tu red Wi-Fi. Si aparece la frecuencia, '
+                         'un valor cercano a 2400 MHz indica 2,4 GHz y uno cercano a 5000 MHz indica 5 GHz.')
+                st.write('**iPhone u otros equipos.** Busca el dispositivo en la app o el panel del router. '
+                         'Algunos modelos muestran si está en 2,4 GHz o 5 GHz.')
+                st.caption('Si el equipo está conectado por Ethernet, elige «Cable de red». '
+                           'Si no puedes comprobar su banda, elige «No sé la banda».')
             rows = []
             for i,row in enumerate(st.session_state.rows):
                 with st.container(border=True):
