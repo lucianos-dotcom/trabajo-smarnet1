@@ -25,7 +25,7 @@ class AppTests(unittest.TestCase):
         self.assertEqual(app.metric[3].value, '8 Mbps')
         app.button(key='add').click().run()
         self.assertEqual(len(app.session_state['rows']), 4)
-        app.button(key='remove_0').click().run()
+        next(button for button in app.button if button.label == 'Quitar este grupo').click().run()
         self.assertEqual(len(app.session_state['rows']), 3)
         self.assertFalse(app.exception)
         app.selectbox(key='preset').select('Empezar desde cero').run()
@@ -43,7 +43,7 @@ class AppTests(unittest.TestCase):
         app.number_input(key='upload_capacity').set_value(5).run()
         self.assertTrue(any('No alcanza en este ejemplo' in m.value for m in app.markdown))
         app.checkbox(key='model_wifi').check().run()
-        app.selectbox(key='band_0').select('2,4 GHz').run()
+        next(box for box in app.selectbox if box.label == 'Conexión del grupo 1').select('2,4 GHz').run()
         app.checkbox(key='move').check().run()
         self.assertFalse(app.exception)
 

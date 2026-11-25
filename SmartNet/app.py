@@ -17,22 +17,37 @@ div.stButton>button{border-radius:12px;min-height:44px}
 [class*="st-key-family_card_"][class*="_unknown"]{border-top:5px solid #94a3b8}
 .st-key-family_summary{border-left:6px solid #0ea5e9}
 </style>''', unsafe_allow_html=True)
-ROW_PREFIXES = ('device_', 'activity_', 'count_', 'band_')
+st.session_state.setdefault('row_revision', 0)
 
-def clear_rows():
-    for key in list(st.session_state):
-        if key.startswith(ROW_PREFIXES):
-            del st.session_state[key]
+def row_key(field, i):
+    return f'{field}_{st.session_state.row_revision}_{i}'
+
+def replace_rows(rows):
+    # Reused positions must start with the new rows' values in the browser.
+    st.session_state.rows = rows
+    st.session_state.row_revision += 1
 
 def load_preset():
-    clear_rows()
-    st.session_state.rows = [dict(device=DEVICES[d], activity=ACTIVITIES[a], count=n, band=BANDS[3])
-                            for d,a,n in PRESETS[st.session_state.preset]]
+    replace_rows([
+        dict(device=DEVICES[d], activity=ACTIVITIES[a], count=n, band=BANDS[3])
+        for d, a, n in PRESETS[st.session_state.preset]
+    ])
 
 def choose_device(i):
-    device = st.session_state[f'device_{i}']
+    device = st.session_state[row_key('device', i)]
     activity = 6 if device == DEVICES[4] else 7 if device in [DEVICES[7], DEVICES[8], DEVICES[9], DEVICES[10]] else 0
-    st.session_state[f'activity_{i}'] = ACTIVITIES[activity]
+    st.session_state[row_key('activity', i)] = ACTIVITIES[activity]
+
+def remove_row(index):
+    remaining = []
+    for i, row in enumerate(st.session_state.rows):
+        if i != index:
+            defaults = dict(row, band=row.get('band', BANDS[3]))
+            remaining.append({
+                field: st.session_state.get(row_key(field, i), value)
+                for field, value in defaults.items()
+            })
+    replace_rows(remaining)
 
 def apply_measurement():
     result = st.session_state.last_speed
@@ -117,15 +132,11 @@ rows=[]
 for i,row in enumerate(st.session_state.rows):
     with st.container(border=True):
         a,b,c = st.columns([3,4,2])
-        device = a.selectbox(f'Equipo {i+1}', DEVICES, index=DEVICES.index(row['device']), key=f'device_{i}', on_change=choose_device, args=(i,))
-        activity = b.selectbox(f'Actividad {i+1}', ACTIVITIES, index=ACTIVITIES.index(row['activity']), key=f'activity_{i}')
-        count = c.number_input(f'Cantidad {i+1}', min_value=0, max_value=100, value=row['count'], step=1, key=f'count_{i}')
-        band = st.selectbox(f'Conexión del grupo {i+1}', BANDS, index=BANDS.index(row.get('band',BANDS[3])), key=f'band_{i}')
-        if st.button('Quitar este grupo', key=f'remove_{i}'):
-            updated = [dict(device=st.session_state.get(f'device_{j}',r['device']), activity=st.session_state.get(f'activity_{j}',r['activity']), count=int(st.session_state.get(f'count_{j}',r['count'])), band=st.session_state.get(f'band_{j}',r.get('band',BANDS[3]))) for j,r in enumerate(st.session_state.rows) if j!=i]
-            st.session_state.rows=updated
-            clear_rows()
-            st.rerun()
+        device = a.selectbox(f'Equipo {i+1}', DEVICES, index=DEVICES.index(row['device']), key=row_key('device', i), on_change=choose_device, args=(i,))
+        activity = b.selectbox(f'Actividad {i+1}', ACTIVITIES, index=ACTIVITIES.index(row['activity']), key=row_key('activity', i))
+        count = c.number_input(f'Cantidad {i+1}', min_value=0, max_value=100, value=row['count'], step=1, key=row_key('count', i))
+        band = st.selectbox(f'Conexión del grupo {i+1}', BANDS, index=BANDS.index(row.get('band',BANDS[3])), key=row_key('band', i))
+        st.button('Quitar este grupo', key=row_key('remove', i), on_click=remove_row, args=(i,))
         rows.append(dict(device=device, activity=activity, count=int(count), band=band))
 st.session_state.rows=rows
 if st.button('＋ Agregar otro equipo', key='add'):
