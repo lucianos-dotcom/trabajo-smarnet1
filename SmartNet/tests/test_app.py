@@ -105,6 +105,16 @@ class AppTests(unittest.TestCase):
         self.assertTrue(any('Qué probar' in item.value and '5 GHz' in item.value for item in app.markdown))
         self.assertFalse(app.exception)
 
+    def test_provider_guidance_when_plan_is_short(self):
+        app = self.app()
+        app.selectbox(key='preset').select('Descargas y clases online').run()
+        app.toggle(key='manual_reference').set_value(True).run()
+        app.selectbox(key='plan').select('20 Mbps').run()
+        self.assertTrue(any('Cuándo evaluar otro plan' in item.value and 'falta descarga' in item.value
+                            for item in app.markdown))
+        app.checkbox(key='pause').check().run()
+        self.assertFalse(any('Cuándo evaluar otro plan' in item.value for item in app.markdown))
+
     def test_social_preset_and_short_videos(self):
         app = self.app()
         app.selectbox(key='preset').select('Solo uso el celular para redes sociales').run()
@@ -119,6 +129,11 @@ class AppTests(unittest.TestCase):
         self.assertTrue(any('leer mensajes y revisar publicaciones' in item.value for item in app.markdown))
         self.assertFalse(any(box.key in ('pause', 'lower') for box in app.checkbox))
         self.assertFalse(any(button.key == 'try_bands' for button in app.button))
+        app.checkbox(key='still_slow').check().run()
+        guidance = [item.value for item in app.markdown]
+        self.assertTrue(any('Prueba otra app en el mismo lugar' in text for text in guidance))
+        self.assertTrue(any('Cuándo llamar a tu compañía' in text for text in guidance))
+        self.assertFalse(any('Cuándo evaluar otro plan' in text for text in guidance))
         next(box for box in app.selectbox if box.label == 'Actividad 1').select(
             'Videos cortos en redes (Reels o TikTok)').run()
         self.assertEqual(app.metric[0].value, '3 Mbps')

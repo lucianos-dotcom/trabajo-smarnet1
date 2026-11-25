@@ -90,6 +90,17 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await stage('¿Con qué velocidad cuenta la casa?').waitFor();
     assert.equal(await slides.getByText('Ver o editar equipos',{exact:true}).count(),0);
     assert(await slides.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+    await slides.getByRole('button',{name:'Siguiente →',exact:true}).click();
+    await preset.getByRole('combobox').click();
+    await slides.getByRole('option',{name:'Solo uso el celular para redes sociales',exact:true}).click();
+    await slides.getByText('Equipos en este escenario: 1.',{exact:true}).waitFor();
+    await slides.getByRole('button',{name:'Ver resultado →',exact:true}).click();
+    await slides.getByText('Igual me anda lento',{exact:true}).click();
+    await slides.getByText(/Prueba otra app en el mismo lugar/).waitFor();
+    await slides.getByText(/Cuándo llamar a tu compañía/).waitFor();
+    assert.equal(await slides.getByText(/Cuándo evaluar otro plan/).count(),0);
+    await slides.getByRole('button',{name:'Volver al test de velocidad',exact:true}).click();
+    await stage('¿Con qué velocidad cuenta la casa?').waitFor();
     console.log('Presentation: bottom navigation, result, PNG download, retained edits and mobile width passed');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1)});

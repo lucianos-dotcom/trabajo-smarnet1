@@ -52,6 +52,7 @@ def load_preset():
     st.session_state.show_band_proposal = False
     st.session_state.pause = False
     st.session_state.lower = False
+    st.session_state.still_slow = False
     preset = st.session_state.preset
     groups = SCENARIOS[preset]
     bands = [BANDS[3]] * len(groups)
@@ -271,6 +272,28 @@ def changed_readings(comparisons, baseline, improved):
         if before != after and (before is None or after is None or not isclose(before, after)):
             result.append((title, before, after, unit))
     return result
+
+
+def show_connection_steps(plan_limits, wifi_limited, social_only):
+    with st.container(border=True, key='connection_steps'):
+        st.markdown('#### Qué hacer si anda lento' if not plan_limits else '#### Qué hacer si falta capacidad')
+        if not plan_limits and not wifi_limited and social_only:
+            st.markdown('1. **Prueba otra app en el mismo lugar.** Si solo falla una, revisa esa app o prueba de nuevo más tarde.')
+            st.markdown('2. **Compara la señal.** Repite el test donde notas lentitud y luego cerca del router. '
+                        'Si mejora al acercarte, prueba usar el celular donde la señal llegue mejor.')
+        else:
+            st.markdown('1. **Compara la señal.** Repite el test donde notas lentitud y luego cerca del router. Usa cable si tienes un equipo compatible.')
+            if wifi_limited:
+                st.markdown('2. **Si mejora cerca del router, revisa la cobertura.** Acerca el equipo o conecta por cable los equipos fijos que puedas.')
+            elif plan_limits:
+                st.markdown('2. **Reduce el uso simultáneo.** Deja las descargas o respaldos grandes para otro momento y vuelve a probar.')
+        st.markdown('**Cuándo llamar a tu compañía.** Si la lentitud sigue en varias apps cerca del router o por cable, comparte los resultados con soporte.')
+        if plan_limits:
+            directions = ' y '.join(plan_limits)
+            st.markdown(f'**Cuándo evaluar otro plan.** Si recibes la velocidad contratada y en tu uso habitual '
+                        f'todavía falta {directions}, consulta por un plan con más capacidad en ese sentido.')
+        st.button('Volver al test de velocidad', key='support_back_to_test',
+                  on_click=set_presentation_step, args=(0,))
 
 
 PRESENTATION_PAGES = (
@@ -507,6 +530,7 @@ with st.container(key='presentation_frame'):
                 if available
             ]
             st.subheader('Prueba una mejora' if actions_available else 'Qué hacer ahora')
+            still_slow = active and st.checkbox('Igual me anda lento', key='still_slow')
             recommendation_slot = st.empty()
             pause = lower = False
             band_proposal = can_suggest and st.session_state.get('show_band_proposal', False)
@@ -537,6 +561,12 @@ with st.container(key='presentation_frame'):
             improved = network_summary(proposed, capacity, upload, preview_caps) if testing else baseline
             changed = [row for row in proposed if row['count']] != [row for row in rows if row['count']]
             comparisons = comparison_values(baseline, improved, known, compare_wifi)
+            plan_limits = [
+                direction for direction, usage in (
+                    ('descarga', improved['down_usage'] if known else None), ('subida', improved['up_usage'])
+                ) if usage is not None and usage > 100
+            ]
+            wifi_limited = any((improved['bands'][band]['usage'] or 0) > 100 for band in BANDS[:2])
             changes_to_chart = changed_readings(comparisons, baseline, improved) if changed else []
             focus_wifi = band_proposal or any(item['state'] == 'over' for item in items[2:])
             visible_charts = sorted(changes_to_chart, key=lambda row: (row[0] in BANDS[:2]) != focus_wifi)[:2]
@@ -577,7 +607,7 @@ with st.container(key='presentation_frame'):
             with recommendation_slot.container():
                 if advice:
                     st.markdown(f'**Qué probar.** {advice}')
-                elif not actions_available:
+                elif not actions_available and not still_slow and not plan_limits:
                     if not active:
                         st.caption('Agrega un equipo en la pantalla anterior para obtener una recomendación.')
                     elif not known:
@@ -592,6 +622,9 @@ with st.container(key='presentation_frame'):
                         'border-left: 3px solid #0d9488; border-radius: 8px; padding: .45rem .65rem;}</style>',
                         unsafe_allow_html=True,
                     )
+
+            if still_slow or plan_limits:
+                show_connection_steps(plan_limits, wifi_limited, social_only)
 
         with st.expander('Detalle y números'):
             with st.container(key='slide_context'):

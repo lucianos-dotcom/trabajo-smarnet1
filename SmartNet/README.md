@@ -35,7 +35,7 @@ streamlit run app.py --server.headless true
 
 1. **Conexión.** El test está abierto al entrar. Puedes usarlo, ingresar las velocidades de tu plan o seguir a un ejemplo con un plan predefinido.
 2. **Equipos.** Elige un ejemplo o empieza desde cero. «Solo uso el celular para redes sociales» carga un celular con banda desconocida para mensajes y publicaciones. Puedes cambiar su actividad a videos cortos. Los equipos se muestran directamente. Puedes editar sus actividades y bandas. La prueba usa capacidades supuestas, visibles en el resumen.
-3. **Resultado y mejoras.** Consulta descarga, subida y bandas. Compara el antes y el después al pausar descargas, cambiar de 4K a HD o repartir equipos entre bandas. La propuesta conserva los equipos conectados por cable.
+3. **Resultado y mejoras.** Consulta descarga, subida y bandas. Compara el antes y el después al pausar descargas, cambiar de 4K a HD o repartir equipos entre bandas. La propuesta conserva los equipos conectados por cable. **Igual me anda lento** orienta cuándo revisar la señal y cuándo consultar al proveedor. Si falta capacidad de descarga o subida, el resultado indica cuándo evaluar otro plan.
 
 Incluye celulares, PC, TV, consolas, cámaras, tablets, TV Box, parlantes, ampolletas/enchufes, impresoras y aspiradoras robot. El tipo organiza la matriz; es la **actividad elegida** la que determina la demanda.
 
