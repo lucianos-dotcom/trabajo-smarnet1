@@ -424,23 +424,28 @@ with st.container(key='presentation_frame'):
 
         st.subheader('Resultado de la prueba')
         with st.container(border=True, key='family_summary'):
-            if active and all(item['state'] == 'unknown' for item in items):
-                st.markdown('### 🏠 Falta una referencia de velocidad')
-                st.write('Haz el test o ingresa los datos de tu plan para saber si alcanza.')
-            elif any(item['state'] == 'over' for item in items[2:]) and all(
-                item['state'] in ('good', 'tight') for item in items[:2]
-            ):
-                st.markdown('### El Wi-Fi se queda corto')
-                st.write('El plan alcanza para enviar y recibir los datos.')
-            else:
-                st.markdown(f'### {headline}')
-                st.write(explanation)
-            if active and not all(item['state'] == 'unknown' for item in items):
-                show_result_status('Plan de internet', items[:2])
-                if model_wifi:
-                    show_result_status('Wi-Fi de la casa', items[2:], incomplete_bands)
-            if overdemand:
-                st.caption('Necesitan atención: ' + ' · '.join(overdemand))
+            diagnosis, illustration = st.columns([2, 1], vertical_alignment='center')
+            with diagnosis:
+                if active and all(item['state'] == 'unknown' for item in items):
+                    st.markdown('### 🏠 Falta una referencia de velocidad')
+                    st.write('Haz el test o ingresa los datos de tu plan para saber si alcanza.')
+                elif any(item['state'] == 'over' for item in items[2:]) and all(
+                    item['state'] in ('good', 'tight') for item in items[:2]
+                ):
+                    st.markdown('### El Wi-Fi se queda corto')
+                    st.write('El plan alcanza para enviar y recibir los datos.')
+                else:
+                    st.markdown(f'### {headline}')
+                    st.write(explanation)
+                if active and not all(item['state'] == 'unknown' for item in items):
+                    show_result_status('Plan de internet', items[:2])
+                    if model_wifi:
+                        show_result_status('Wi-Fi de la casa', items[2:], incomplete_bands)
+                if overdemand:
+                    st.caption('Necesitan atención: ' + ' · '.join(overdemand))
+
+            with illustration.container(key='result_art'):
+                st.image(str(Path(__file__).with_name('assets') / 'result-router.webp'), width='stretch')
 
         with st.container(border=True, key='improvements'):
             st.subheader('Prueba una mejora')

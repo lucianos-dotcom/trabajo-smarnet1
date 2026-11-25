@@ -145,3 +145,26 @@ div.stButton > button { border-radius: 12px; min-height: 44px; }
     border-bottom: 1px solid rgba(100, 140, 150, .26);
     padding: .35rem 0;
 }
+
+.st-key-result_art img {
+    width: 100%;
+    max-height: 16rem;
+    object-fit: cover;
+    object-position: center 55%;
+    border-radius: 14px;
+}
+.smartnet-result-row .smartnet-change-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+}
+.smartnet-result-row .smartnet-change-tag::before {
+    content: "";
+    width: .42rem;
+    height: .42rem;
+    border-radius: 50%;
+    background: currentColor;
+}
+@media (max-width: 640px) {
+    .st-key-result_art img { max-height: 7rem; object-position: center 63%; }
+}
