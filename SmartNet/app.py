@@ -177,6 +177,14 @@ if active:
             with st.container(border=True, key=f"family_card_{index}_{item['state']}"):
                 st.markdown(f"#### {item['title']}")
                 st.markdown(f'**{icon} {label}**')
+                if item['key'] == 'upload':
+                    if upload is None:
+                        st.write(f"Tus equipos necesitan **{summary['up']:g} Mbps de subida**.")
+                        st.caption('En Conoce tu conexión, marca «Conozco mi velocidad de subida» '
+                                   'e ingresa el valor, o usa el test de velocidad.')
+                    else:
+                        st.write(f"Necesitas **{summary['up']:g} Mbps** de los **{upload:g} Mbps** de subida "
+                                 f"de referencia (**{summary['up_usage']:.1f}%**).")
                 if item['state'] in ('tight', 'over'):
                     st.caption(item['tip'])
     if incomplete_bands:
@@ -190,6 +198,8 @@ with st.expander('🔢 Quiero ver los números'):
     st.write(f"Subida que necesitan tus equipos: **{summary['up']:g} Mbps**.")
     if upload is not None:
         st.write(f"Subida de referencia: **{upload:g} Mbps** · uso estimado: **{summary['up_usage']:.1f}%**.")
+    else:
+        st.write('Subida de referencia: pendiente. Falta ese dato para saber si alcanza.')
     if model_wifi:
         for band in BANDS[:2]:
             data = summary['bands'][band]

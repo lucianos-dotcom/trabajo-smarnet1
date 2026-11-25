@@ -40,8 +40,10 @@ class AppTests(unittest.TestCase):
     def test_bands_and_camera_preset(self):
         app=self.app()
         app.selectbox(key='preset').select('Casa con cámaras y dispositivos inteligentes').run()
+        self.assertTrue(any('Subida de referencia: pendiente' in m.value for m in app.markdown))
         app.checkbox(key='know_upload').check().run()
         app.number_input(key='upload_capacity').set_value(5).run()
+        self.assertTrue(any('165.0%' in m.value and 'de subida' in m.value for m in app.markdown))
         self.assertTrue(any('No alcanza en este ejemplo' in m.value for m in app.markdown))
         original = app.session_state['rows']
         app.button(key='try_bands').click().run()
