@@ -420,8 +420,9 @@ with st.container(border=True, key='improvements'):
             unknown_before = bool(baseline['bands'][BANDS[3]]['matrix'].sum())
             unknown_after = bool(improved['bands'][BANDS[3]]['matrix'].sum())
             comparisons = zip(checks(baseline, known, compare_wifi), checks(improved, known, compare_wifi))
-            result_cols = st.columns(2)
             for i, (before, after) in enumerate(comparisons):
+                if i % 2 == 0:
+                    result_cols = st.columns(2)
                 part = before['key']
                 is_band = part in BANDS[:2]
                 before_usage = None if is_band and unknown_before else before['usage']
