@@ -91,8 +91,9 @@ async function verify(page) {
   await checkRows(presets[cameras]);
   await page.getByText('Conozco mi velocidad de subida (o la obtuve en el test)', { exact: true }).click();
   await setNumber('Subida de referencia (Mbps)', 5);
-  await page.getByText('8.25 Mbps', { exact: true }).waitFor({ state: 'attached' });
-  await page.getByText('165.0%', { exact: true }).waitFor({ state: 'attached' });
+  const numbers = page.getByTestId('stExpander').filter({ hasText: 'Quiero ver los números' });
+  await numbers.getByText('8.25 Mbps', { exact: true }).waitFor({ state: 'attached' });
+  await numbers.getByText('165.0%', { exact: true }).waitFor({ state: 'attached' });
   await choose('Conexión del grupo 2', 'Cable de red');
   await choose('Conexión del grupo 1', '5 GHz');
   const original = presets[cameras].map((row, i) =>
