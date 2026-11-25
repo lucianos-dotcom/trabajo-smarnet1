@@ -184,17 +184,32 @@ _, headline, explanation = verdict(items, active, incomplete_bands)
 st.subheader('3 · Revisa el resultado')
 with st.container(border=True, key='family_summary'):
     st.markdown(f'### {headline}')
-    st.write(explanation)
+    if (all(item['state'] in ('good', 'tight') for item in items[:2])
+            and any(item['state'] == 'over' for item in items[2:])):
+        st.write('El plan alcanza para enviar y recibir los datos. En este ejemplo, el problema está '
+                 'en el Wi-Fi entre el router y los equipos.')
+    else:
+        st.write(explanation)
 
 if active:
-    cols = st.columns(2)
     for index, item in enumerate(items):
+        if index == 0:
+            st.markdown('#### Plan de internet · De internet al router y viceversa')
+            cols = st.columns(2)
+        elif index == 2:
+            st.markdown('#### Wi-Fi de la casa · Entre el router y los equipos')
+            st.write('El router reparte los datos por 2,4 GHz y 5 GHz. Los equipos que usan la misma banda '
+                     'comparten su capacidad para enviar y recibir datos.')
+            cols = st.columns(2)
         icon, label = STATES[item['state']]
         with cols[index % 2]:
             with st.container(border=True, key=f"family_card_{index}_{item['state']}"):
                 st.markdown(f"#### {item['title']}")
                 st.markdown(f'**{icon} {label}**')
-                if item['key'] == 'upload':
+                if item['key'] == 'download' and known:
+                    st.write(f"Los equipos necesitan recibir **{summary['down']:g} Mbps**. "
+                             f"La referencia de descarga es **{capacity:g} Mbps**.")
+                elif item['key'] == 'upload':
                     if upload is None:
                         st.write(f"Tus equipos necesitan **{summary['up']:g} Mbps de subida**.")
                         st.caption('En Conoce tu conexión, marca «Conozco mi velocidad de subida» '
@@ -203,6 +218,11 @@ if active:
                         reference = 'del ejemplo' if classroom_demo else 'de referencia'
                         st.write(f"Necesitas **{summary['up']:g} Mbps** de los **{upload:g} Mbps** de subida "
                                  f"{reference} (**{summary['up_usage']:.1f}%**).")
+                elif item['key'] in BANDS[:2]:
+                    band = summary['bands'][item['key']]
+                    st.write(f"Los equipos de esta banda necesitan mover **{band['traffic']:g} Mbps** "
+                             f"entre lo que envían y reciben. Con la señal del ejemplo, "
+                             f"esta banda puede mover **{band['capacity']:g} Mbps**.")
                 if item['state'] in ('tight', 'over'):
                     st.caption(item['tip'])
     if incomplete_bands:
