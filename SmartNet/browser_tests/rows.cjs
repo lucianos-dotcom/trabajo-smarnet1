@@ -50,10 +50,11 @@ async function verify(page) {
     await number(label).press('Enter');
   };
   const checkRows = async expected => {
-    await page.waitForFunction(count => document.querySelectorAll('[class*="st-key-remove_"] button').length === count, expected.length);
     if (expected.length && !await number('Cantidad 1').isVisible()) {
-      await page.getByText('Ver o editar equipos', { exact: true }).click();
+      const toggle = page.getByText('Ver o editar equipos', { exact: true });
+      if (await toggle.isVisible()) await toggle.click();
     }
+    await page.waitForFunction(count => document.querySelectorAll('[class*="st-key-remove_"] button').length === count, expected.length);
     for (const [i, [device, activity, count, band = unknown]] of expected.entries()) {
       const n = i + 1;
       await box('Equipo ' + n).getByText(device, { exact: true }).waitFor();

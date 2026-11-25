@@ -38,6 +38,7 @@ def replace_rows(rows):
 
 def load_preset():
     st.session_state.show_band_proposal = False
+    st.session_state.edit_equipment = False
     preset = st.session_state.preset
     groups = SCENARIOS[preset]
     bands = [BANDS[3]] * len(groups)
@@ -219,10 +220,11 @@ if classroom_demo:
 if not custom_scenario:
     equipment = sum(row['count'] for row in current_rows())
     st.caption(f'Equipos en este escenario: {equipment}.')
-equipment_panel = st.container() if custom_scenario else st.expander('Ver o editar equipos')
-with equipment_panel:
+show_equipment = custom_scenario or st.toggle('Ver o editar equipos', key='edit_equipment')
+rows = current_rows()
+if show_equipment:
     st.caption('Agrupa los equipos que hacen lo mismo y usan la misma conexión.')
-    rows=[]
+    rows = []
     for i,row in enumerate(st.session_state.rows):
         with st.container(border=True):
             a,b,c,d = st.columns([3,4,2,3])
