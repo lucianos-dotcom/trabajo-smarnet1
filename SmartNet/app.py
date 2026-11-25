@@ -3,8 +3,9 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
-from household import (ACTIVITIES, DEVICES, RATES, UPLOAD_RATES, PRESETS, BANDS,
+from household import (ACTIVITIES, DEVICES, PRESETS, BANDS,
                        SIGNALS, network_summary, improve, suggest_bands)
+from report_image import simulation_png
 from speed_test import render_speed_test, valid_result
 from results import STATES, checks, state, verdict
 
@@ -95,6 +96,20 @@ def show_usage_comparison(before, after):
         f'{"".join(bars)}</div>',
         unsafe_allow_html=True,
     )
+
+
+def comparison_values(initial, final, known, compare_wifi):
+    unknown_initial = bool(initial['bands'][BANDS[3]]['matrix'].sum())
+    unknown_final = bool(final['bands'][BANDS[3]]['matrix'].sum())
+    result = []
+    for before, after in zip(checks(initial, known, compare_wifi), checks(final, known, compare_wifi)):
+        part = before['key']
+        is_band = part in BANDS[:2]
+        title = {'download': 'Descarga del plan', 'upload': 'Subida del plan'}.get(part, part)
+        before_usage = None if is_band and unknown_initial else before['usage']
+        after_usage = None if is_band and unknown_final else after['usage']
+        result.append((title, before_usage, after_usage))
+    return result
 
 
 def wifi_usage(report):
@@ -322,6 +337,118 @@ with st.container(key='presentation_frame'):
                     statuses.append(f'{icon} **{part}** · {label}')
                 st.caption('  |  '.join(statuses))
 
+        baseline = improved = summary
+        changes = []
+        with st.container(border=True, key='improvements'):
+            st.subheader('Prueba una mejora')
+            st.write('Prueba una acción y fíjate en qué parte queda con más espacio. Puedes combinar varias.')
+
+            downloads, video, wifi = st.columns(3)
+            with downloads.container(border=True, key='action_pause'):
+                st.markdown('#### 🎮 Deja la descarga para después')
+                st.write('Si se corta una clase o serie, prueba pausar la descarga del juego o archivo.')
+                pause = st.checkbox('Probar dejar las descargas para después', key='pause')
+            with video.container(border=True, key='action_hd'):
+                st.markdown('#### 📺 Cambia de 4K a HD')
+                st.write('Si varias personas ven videos al mismo tiempo, prueba bajar la calidad de los que están en 4K.')
+                lower = st.checkbox('Probar videos en HD en vez de 4K', key='lower')
+            with wifi.container(border=True, key='action_bands'):
+                st.markdown('#### 📶 Reparte los equipos entre bandas')
+                st.write('Prueba otra distribución entre 2,4 GHz y 5 GHz. Puede aliviar una banda y cargar la otra.')
+                can_suggest = any(row['count'] and row['band'] != BANDS[2] for row in rows)
+                band_proposal = can_suggest and st.session_state.get('show_band_proposal', False)
+                button_label = 'Retirar cambio de bandas' if band_proposal else 'Probar cambio de bandas'
+                if st.button(button_label, key='try_bands', disabled=not can_suggest):
+                    st.session_state.show_band_proposal = not band_proposal
+                    st.rerun()
+
+            compare_wifi = model_wifi or band_proposal
+            preview_caps = band_caps or default_band_caps
+            if classroom_demo and not model_wifi:
+                preview_caps = {
+                    band: nominal * list(SIGNALS.values())[CLASSROOM_SIGNAL_OPTIONS[band]]
+                    for band, nominal in CLASSROOM_WIFI_CAPS.items()
+                }
+
+            if not (pause or lower or band_proposal):
+                if model_wifi:
+                    recommend_wifi_step(rows, summary, capacity, upload, preview_caps, pause, lower, band_proposal)
+                elif items[0]['state'] == 'over' and any(
+                    row['count'] and row['activity'] == ACTIVITIES[5] for row in rows
+                ):
+                    st.info('Si la descarga del plan se queda corta, prueba dejar las descargas grandes para después.')
+
+            if pause or lower or band_proposal:
+                activity_changes = improve(rows, pause, lower)
+                proposed = activity_changes
+                if band_proposal:
+                    proposed = suggest_bands(proposed)
+                    changes = [
+                        (i, before['device'], before['band'], after['band'])
+                        for i, (before, after) in enumerate(zip(rows, proposed), start=1)
+                        if after['count'] and before['band'] != after['band']
+                    ]
+
+                baseline = network_summary(rows, capacity, upload, preview_caps) if compare_wifi and not model_wifi else summary
+                improved = network_summary(proposed, capacity, upload, preview_caps if compare_wifi else {})
+                if band_proposal and changes:
+                    with st.container(border=True, key='final_explanation'):
+                        st.markdown('#### Qué pasaría al mover los equipos')
+                        for i, device, old_band, new_band in changes:
+                            st.write(f'Grupo {i} · {device}: {old_band} → {new_band}')
+                        st.caption('En casa, revisa que cada equipo admita la banda y tenga buena señal en su ubicación.')
+                    without_move = wifi_usage(network_summary(activity_changes, capacity, upload, preview_caps))
+                    with_move = wifi_usage(improved)
+                    if without_move and with_move:
+                        shifts = [
+                            f"**{band}** {'baja' if with_move[band] < without_move[band] else 'sube'} "
+                            f"de **{without_move[band]:.1f}%** a **{with_move[band]:.1f}%**"
+                            for band in BANDS[:2] if not isclose(without_move[band], with_move[band])
+                        ]
+                        if shifts:
+                            st.write(f"Al cambiar de banda, {' y '.join(shifts)}. "
+                                     'Los equipos llevan su tráfico a la banda de destino.')
+                    elif with_move:
+                        st.caption('Para comparar el efecto del cambio, asigna las bandas originales de tus equipos.')
+                elif band_proposal:
+                    st.info('Los grupos activos ya están en las bandas sugeridas.')
+                if [row for row in proposed if row['count']] == [row for row in rows if row['count']]:
+                    st.info('Todo queda igual: las ideas elegidas no afectan las actividades que agregaste.')
+                else:
+                    st.markdown('#### Antes y después')
+                    st.caption('La marca vertical indica el 100%. Pasar esa marca significa que falta capacidad.')
+                    if not isclose(summary['down'], improved['down']):
+                        st.metric('Demanda de descarga con estos cambios', f"{improved['down']:g} Mbps",
+                                  delta=f"{improved['down'] - summary['down']:g} Mbps", delta_color='inverse')
+
+                    if compare_wifi:
+                        if improved['bands'][BANDS[3]]['matrix'].sum():
+                            st.caption('Completa las bandas de los equipos para saber si el Wi-Fi alcanzaría.')
+                        elif any(improved['bands'][band]['usage'] > 100 for band in BANDS[:2]):
+                            st.warning('El Wi-Fi todavía se queda corto en al menos una banda.')
+                        else:
+                            st.success('Con estos cambios, las dos bandas tienen capacidad para las actividades simuladas.')
+                        recommend_wifi_step(rows, improved, capacity, upload, preview_caps, pause, lower, band_proposal)
+
+                    comparisons = comparison_values(baseline, improved, known, compare_wifi)
+                    for i, (title, before_usage, after_usage) in enumerate(comparisons):
+                        if i % 2 == 0:
+                            st.markdown('##### Plan de internet' if i == 0 else '##### Wi-Fi de la casa')
+                            result_cols = st.columns(2)
+                        with result_cols[i % 2].container(border=True):
+                            st.markdown(f'**{title}**')
+                            show_usage_comparison(before_usage, after_usage)
+                            if after_usage is not None:
+                                icon, label = STATES[state(after_usage)]
+                                st.markdown(f'**{icon} {label}**')
+                            if before_usage is not None and after_usage is not None:
+                                if isclose(before_usage, after_usage):
+                                    st.caption('La carga queda igual.')
+                                elif after_usage < before_usage:
+                                    st.caption('La carga baja.')
+                                else:
+                                    st.caption('La carga sube.')
+
         if active:
             with st.expander('Ver detalle del resultado'):
                 for index, item in enumerate(items):
@@ -389,127 +516,36 @@ with st.container(key='presentation_frame'):
                              f"**{data['capacity']:g} Mbps** en la simulación. "
                              f"Eso equivale al **{data['usage']:.1f}%** de su capacidad.")
 
-        with st.container(border=True, key='improvements'):
-            st.subheader('Prueba una mejora')
-            st.write('Elige una acción y compara el antes y el después. Puedes combinar varias. '
-                     'Puedes comparar con el resultado original de arriba.')
+        if page_key == 'result':
+            with st.container(border=True, key='final_download'):
+                st.subheader('Guarda tu simulación')
+                st.caption('Descarga una imagen con el escenario, las acciones probadas y el antes y después.')
+                actions = [
+                    label for selected, label in (
+                        (pause, 'Dejar las descargas para después'),
+                        (lower, 'Cambiar de 4K a HD'),
+                        (band_proposal, 'Repartir los equipos entre bandas'),
+                    ) if selected
+                ]
+                report_changes = [
+                    f'Grupo {i} · {device.split(" ", 1)[1]}: {old_band} a {new_band}'
+                    for i, device, old_band, new_band in changes
+                ]
+                connection = f'{capacity:g} Mbps de {download_note} · {upload_note}'
+                image = simulation_png(st.session_state.preset, total_equipment, connection, actions,
+                                       comparison_values(baseline, improved, known, compare_wifi), report_changes)
+                st.download_button('Descargar resumen como imagen', image, 'smartnet-resumen.png',
+                                   'image/png', type='primary', on_click='ignore')
 
-            downloads, video, wifi = st.columns(3)
-            with downloads.container(border=True, key='action_pause'):
-                st.markdown('#### 🎮 Deja la descarga para después')
-                st.write('Si se corta una clase o serie, prueba pausar la descarga del juego o archivo.')
-                pause = st.checkbox('Probar dejar las descargas para después', key='pause')
-            with video.container(border=True, key='action_hd'):
-                st.markdown('#### 📺 Cambia de 4K a HD')
-                st.write('Si varias personas ven videos al mismo tiempo, prueba bajar la calidad de los que están en 4K.')
-                lower = st.checkbox('Probar videos en HD en vez de 4K', key='lower')
-            with wifi.container(border=True, key='action_bands'):
-                st.markdown('#### 📶 Reparte los equipos entre bandas')
-                st.write('Prueba otra distribución entre 2,4 GHz y 5 GHz. Puede aliviar una banda y cargar la otra.')
-                can_suggest = any(row['count'] and row['band'] != BANDS[2] for row in rows)
-                band_proposal = can_suggest and st.session_state.get('show_band_proposal', False)
-                button_label = 'Retirar cambio de bandas' if band_proposal else 'Probar cambio de bandas'
-                if st.button(button_label, key='try_bands', disabled=not can_suggest):
-                    st.session_state.show_band_proposal = not band_proposal
-                    st.rerun()
-
-            compare_wifi = model_wifi or band_proposal
-            preview_caps = band_caps or default_band_caps
-            if classroom_demo and not model_wifi:
-                preview_caps = {
-                    band: nominal * list(SIGNALS.values())[CLASSROOM_SIGNAL_OPTIONS[band]]
-                    for band, nominal in CLASSROOM_WIFI_CAPS.items()
-                }
-
-            if not (pause or lower or band_proposal):
-                if model_wifi:
-                    recommend_wifi_step(rows, summary, capacity, upload, preview_caps, pause, lower, band_proposal)
-                elif items[0]['state'] == 'over' and any(
-                    row['count'] and row['activity'] == ACTIVITIES[5] for row in rows
-                ):
-                    st.info('Si la descarga del plan se queda corta, prueba dejar las descargas grandes para después.')
-
-            if pause or lower or band_proposal:
-                activity_changes = improve(rows, pause, lower)
-                proposed = activity_changes
-                if band_proposal:
-                    proposed = suggest_bands(proposed)
-                    changes = [
-                        f"Grupo {i} · {before['device']}: {before['band']} → {after['band']}"
-                        for i, (before, after) in enumerate(zip(rows, proposed), start=1)
-                        if after['count'] and before['band'] != after['band']
-                    ]
-                    st.markdown('#### Qué equipos cambiarían de banda')
-                    if changes:
-                        for change in changes:
-                            st.write(change)
-                    else:
-                        st.write('Los grupos activos ya están en las bandas sugeridas.')
-                    st.caption('Para probarlo en casa, revisa si el equipo admite la banda y si tiene buena señal allí.')
-
-                baseline = network_summary(rows, capacity, upload, preview_caps) if compare_wifi and not model_wifi else summary
-                improved = network_summary(proposed, capacity, upload, preview_caps if compare_wifi else {})
-                if band_proposal and changes:
-                    without_move = wifi_usage(network_summary(activity_changes, capacity, upload, preview_caps))
-                    with_move = wifi_usage(improved)
-                    if without_move and with_move:
-                        shifts = [
-                            f"**{band}** {'baja' if with_move[band] < without_move[band] else 'sube'} "
-                            f"de **{without_move[band]:.1f}%** a **{with_move[band]:.1f}%**"
-                            for band in BANDS[:2] if not isclose(without_move[band], with_move[band])
-                        ]
-                        if shifts:
-                            st.write(f"Al cambiar de banda, {' y '.join(shifts)}. "
-                                     'Los equipos llevan su tráfico a la banda de destino.')
-                    elif with_move:
-                        st.caption('Para comparar el efecto del cambio, asigna las bandas originales de tus equipos.')
-                if [row for row in proposed if row['count']] == [row for row in rows if row['count']]:
-                    st.info('Todo queda igual: las ideas elegidas no afectan las actividades que agregaste.')
-                else:
-                    st.markdown('#### Antes y después')
-                    st.caption('La marca vertical indica el 100%. Pasar esa marca significa que falta capacidad.')
-                    if not isclose(summary['down'], improved['down']):
-                        st.metric('Demanda de descarga con estos cambios', f"{improved['down']:g} Mbps",
-                                  delta=f"{improved['down'] - summary['down']:g} Mbps", delta_color='inverse')
-
-                    unknown_before = bool(baseline['bands'][BANDS[3]]['matrix'].sum())
-                    unknown_after = bool(improved['bands'][BANDS[3]]['matrix'].sum())
-                    comparisons = zip(checks(baseline, known, compare_wifi), checks(improved, known, compare_wifi))
-                    for i, (before, after) in enumerate(comparisons):
-                        if i % 2 == 0:
-                            result_cols = st.columns(2)
-                        part = before['key']
-                        is_band = part in BANDS[:2]
-                        before_usage = None if is_band and unknown_before else before['usage']
-                        after_usage = None if is_band and unknown_after else after['usage']
-                        title = {'download': 'Descarga del plan', 'upload': 'Subida del plan'}.get(part, part)
-                        with result_cols[i % 2].container(border=True):
-                            st.markdown(f'**{title}**')
-                            show_usage_comparison(before_usage, after_usage)
-                            if after_usage is not None:
-                                icon, label = STATES[after['state']]
-                                st.markdown(f'**{icon} {label}**')
-                            if before_usage is not None and after_usage is not None:
-                                if isclose(before_usage, after_usage):
-                                    st.caption('La carga queda igual.')
-                                elif after_usage < before_usage:
-                                    st.caption('La carga baja.')
-                                else:
-                                    st.caption('La carga sube.')
-
-                    if compare_wifi:
-                        if unknown_after:
-                            st.caption('Completa las bandas de los equipos para saber si el Wi-Fi alcanzaría.')
-                        elif any(improved['bands'][band]['usage'] > 100 for band in BANDS[:2]):
-                            st.warning('El Wi-Fi todavía se queda corto en al menos una banda.')
-                        else:
-                            st.success('Con estos cambios, las dos bandas tienen capacidad para las actividades simuladas.')
-                        recommend_wifi_step(rows, improved, capacity, upload, preview_caps, pause, lower, band_proposal)
-
-        report=pd.DataFrame(rows,columns=['device','activity','count','band'])
-        if not report.empty:
-            report['Descarga estimada Mbps']=[r['count']*RATES[ACTIVITIES.index(r['activity'])] for r in rows]
-            report['Subida estimada Mbps']=[r['count']*UPLOAD_RATES[ACTIVITIES.index(r['activity'])] for r in rows]
-        st.download_button('Descargar mi escenario',report.to_csv(index=False).encode('utf-8-sig'),'smartnet.csv','text/csv')
+with st.container(border=True, key='bottom_nav'):
+    back, forward = st.columns(2)
+    back.button('← Volver a la pantalla anterior', key='bottom_back', disabled=presentation_step == 0,
+                on_click=set_presentation_step, args=(max(0, presentation_step - 1),))
+    if presentation_step < len(PRESENTATION_PAGES) - 1:
+        label = 'Siguiente pantalla →' if page_key == 'connection' else 'Siguiente · Ver resultado →'
+        forward.button(label, key='bottom_next', type='primary',
+                       on_click=set_presentation_step, args=(presentation_step + 1,))
+    else:
+        forward.button('Volver al inicio', key='bottom_restart', on_click=set_presentation_step, args=(0,))
 
 st.caption('SmartNet · Funciones y Matrices · Analista Programador · INACAP')

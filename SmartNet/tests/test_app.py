@@ -23,7 +23,8 @@ class AppTests(unittest.TestCase):
         app = self.app()
         app.selectbox(key='preset').select('Descargas y clases online').run()
         app.checkbox(key='pause').check().run()
-        self.assertEqual(app.metric[3].value, '8 Mbps')
+        self.assertEqual(next(metric.value for metric in app.metric
+                              if metric.label == 'Demanda de descarga con estos cambios'), '8 Mbps')
         app.button(key='add').click().run()
         self.assertEqual(len(app.session_state['rows']), 4)
         next(button for button in app.button if button.label == 'Quitar este grupo').click().run()

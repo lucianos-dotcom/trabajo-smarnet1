@@ -91,3 +91,23 @@ div.stButton > button { border-radius: 12px; min-height: 44px; }
         to { opacity: 1; transform: translateY(0); }
     }
 }
+
+[data-testid="stAppViewContainer"] {
+    background-image:
+        radial-gradient(circle at 92% 15%, rgba(20, 184, 166, .09), transparent 23rem),
+        radial-gradient(circle at 3% 55%, rgba(37, 99, 235, .055), transparent 24rem);
+}
+[data-testid="stAppViewContainer"]::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+        repeating-radial-gradient(circle at 108% 22%, transparent 0 34px,
+            rgba(13, 148, 136, .065) 35px 37px, transparent 38px 57px),
+        repeating-radial-gradient(circle at -10% 74%, transparent 0 34px,
+            rgba(37, 99, 235, .045) 35px 37px, transparent 38px 57px);
+    mask-image: linear-gradient(to right, #000, transparent 18%, transparent 82%, #000);
+}
+.st-key-final_explanation { border-left: 4px solid #0d9488; }
+.st-key-final_download, .st-key-bottom_nav { border-top: 3px solid #0d9488; }
