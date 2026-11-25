@@ -173,32 +173,27 @@ with st.container(key='hero'):
         unsafe_allow_html=True,
     )
 
-presentation = st.toggle('Modo presentación', key='presentation_mode',
-                         on_change=set_presentation_step, args=(0,))
 presentation_step = st.session_state.get('presentation_step', 0)
-if presentation:
-    page_key, question = PRESENTATION_PAGES[presentation_step]
-    hidden_pages = ', '.join(f'.st-key-page_{key}' for key, _ in PRESENTATION_PAGES if key != page_key)
-    st.markdown(f'<style>{hidden_pages} {{display: none !important;}}</style>', unsafe_allow_html=True)
-    with st.container(border=True, key='presentation_nav'):
-        st.progress((presentation_step + 1) / len(PRESENTATION_PAGES),
-                    text=f'Pantalla {presentation_step + 1} de {len(PRESENTATION_PAGES)}')
-        st.subheader(question)
-        back, forward = st.columns(2)
-        back.button('← Atrás', key='presentation_back', disabled=presentation_step == 0,
-                    on_click=set_presentation_step, args=(max(0, presentation_step - 1),))
-        if presentation_step < len(PRESENTATION_PAGES) - 1:
-            next_label = 'Ver resultado →' if page_key == 'equipment' else 'Siguiente →'
-            forward.button(next_label, key='presentation_next', type='primary',
-                           on_click=set_presentation_step, args=(presentation_step + 1,))
-        else:
-            forward.button('Volver a la primera pregunta', key='presentation_restart',
-                           on_click=set_presentation_step, args=(0,))
+page_key, question = PRESENTATION_PAGES[presentation_step]
+hidden_pages = ', '.join(f'.st-key-page_{key}' for key, _ in PRESENTATION_PAGES if key != page_key)
+st.markdown(f'<style>{hidden_pages} {{display: none !important;}}</style>', unsafe_allow_html=True)
+with st.container(border=True, key='presentation_nav'):
+    st.progress((presentation_step + 1) / len(PRESENTATION_PAGES),
+                text=f'Pantalla {presentation_step + 1} de {len(PRESENTATION_PAGES)}')
+    st.subheader(question)
+    back, forward = st.columns(2)
+    back.button('← Atrás', key='presentation_back', disabled=presentation_step == 0,
+                on_click=set_presentation_step, args=(max(0, presentation_step - 1),))
+    if presentation_step < len(PRESENTATION_PAGES) - 1:
+        next_label = 'Ver resultado →' if page_key == 'equipment' else 'Siguiente →'
+        forward.button(next_label, key='presentation_next', type='primary',
+                       on_click=set_presentation_step, args=(presentation_step + 1,))
+    else:
+        forward.button('Volver a la primera pregunta', key='presentation_restart',
+                       on_click=set_presentation_step, args=(0,))
 
-with st.container(key='presentation_frame' if presentation else 'full_page'):
+with st.container(key='presentation_frame'):
     with st.container(key='page_connection'):
-        if not presentation:
-            st.subheader('1 · Conoce tu conexión')
         classroom_demo = st.session_state.preset in CLASSROOM_UPLOADS
         if classroom_demo:
             # Keep the manual widget values while the demonstration hides those controls.
@@ -249,8 +244,6 @@ with st.container(key='presentation_frame' if presentation else 'full_page'):
 
 
     with st.container(key='page_scenario'):
-        if not presentation:
-            st.subheader('2 · Arma tu escenario')
         st.selectbox('Prueba un ejemplo o arma tu casa', list(SCENARIOS), key='preset', on_change=load_preset)
 
     with st.container(key='page_equipment'):
@@ -308,14 +301,13 @@ with st.container(key='presentation_frame' if presentation else 'full_page'):
         active = bool(summary['matrix'].sum())
         _, headline, explanation = verdict(items, active, incomplete_bands)
 
-        if presentation:
-            with st.container(border=True, key='slide_context'):
-                st.markdown(f"**{st.session_state.preset}**")
-                total_equipment = sum(row['count'] for row in rows)
-                download_note = 'descarga' if known else 'descarga hipotética'
-                upload_note = f'{upload:g} Mbps de subida' if upload is not None else 'subida por confirmar'
-                st.caption(f'{total_equipment} equipos · {capacity:g} Mbps de {download_note} · {upload_note}')
-        st.subheader('3 · Revisa el resultado' if not presentation else 'Resultado de la simulación')
+        with st.container(border=True, key='slide_context'):
+            st.markdown(f"**{st.session_state.preset}**")
+            total_equipment = sum(row['count'] for row in rows)
+            download_note = 'descarga' if known else 'descarga hipotética'
+            upload_note = f'{upload:g} Mbps de subida' if upload is not None else 'subida por confirmar'
+            st.caption(f'{total_equipment} equipos · {capacity:g} Mbps de {download_note} · {upload_note}')
+        st.subheader('Resultado de la simulación')
         with st.container(border=True, key='family_summary'):
             st.markdown(f'### {headline}')
             if (all(item['state'] in ('good', 'tight') for item in items[:2])

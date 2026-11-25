@@ -23,6 +23,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     });
     await page.goto('http://127.0.0.1:8501');
     await page.getByRole('heading',{name:'SmartNet · ¿Alcanza tu internet para todos?'}).waitFor();
+    await page.getByRole('button',{name:'Siguiente →',exact:true}).click();
     await page.getByText('📶 Hacer un test de velocidad aquí',{exact:true}).click();
     await page.locator('iframe[src*="smartnet_speed"]').waitFor({timeout:30000});
     await page.waitForFunction(() => [...document.querySelectorAll('iframe')].some(f => f.src.includes('smartnet_speed') && f.contentDocument?.readyState === 'complete'));
