@@ -110,7 +110,7 @@ async function verify(page) {
 
   await choose(preset, 'Empezar desde cero');
   await checkRows([]);
-  assert(await solution.isDisabled());
+  await solution.and(page.locator('button:disabled')).waitFor({ state: 'attached' });
   await add.click();
   await checkRows([[phone, chat, 1]]);
   await remove.first().click();
