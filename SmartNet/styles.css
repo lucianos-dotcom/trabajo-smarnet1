@@ -27,10 +27,6 @@ div.stButton > button { border-radius: 12px; min-height: 44px; }
 .st-key-family_summary { border-left: 6px solid #14b8a6; }
 .st-key-improvements { border-top: 5px solid #0d9488; }
 .st-key-improvements [data-testid="stMetric"] { border-color: #0d9488; }
-.st-key-action_pause { border-top: 4px solid #2563eb; }
-.st-key-action_hd { border-top: 4px solid #7c3aed; }
-.st-key-action_bands { border-top: 4px solid #0d9488; }
-.st-key-action_pause, .st-key-action_hd, .st-key-action_bands { min-height: 12rem; }
 
 .smartnet-bars { display: grid; gap: .55rem; margin: .2rem 0 .55rem; }
 .smartnet-bar-label {
@@ -64,7 +60,6 @@ div.stButton > button { border-radius: 12px; min-height: 44px; }
 }
 
 @media (max-width: 640px) {
-    .st-key-action_pause, .st-key-action_hd, .st-key-action_bands { min-height: 0; }
     .st-key-hero { border-radius: 16px; }
 }
 
@@ -102,8 +97,7 @@ div.stButton > button { border-radius: 12px; min-height: 44px; }
             rgba(37, 99, 235, .045) 35px 37px, transparent 38px 57px);
     mask-image: linear-gradient(to right, #000, transparent 18%, transparent 82%, #000);
 }
-.st-key-final_explanation { border-left: 4px solid #0d9488; }
-.st-key-final_download, .st-key-bottom_nav { border-top: 3px solid #0d9488; }
+.st-key-bottom_nav { border-top: 3px solid #0d9488; }
 
 .smartnet-speed-bars { gap: 1rem; margin-block: .65rem; }
 .smartnet-speed-bars .smartnet-bar-track { height: .95rem; }
@@ -117,9 +111,6 @@ div.stButton > button { border-radius: 12px; min-height: 44px; }
     border-color: transparent;
 }
 
-.smartnet-initial-reading strong { font-size: 1.38rem; }
-.smartnet-initial-reading .smartnet-bar-track { margin-block: .3rem .55rem; }
-.st-key-initial_results [data-testid="stVerticalBlockBorderWrapper"] { border-color: #0d9488; }
 
 .smartnet-change-chart {
     display: grid;
@@ -145,16 +136,12 @@ div.stButton > button { border-radius: 12px; min-height: 44px; }
 .smartnet-change-tag.comparison-worse { color: #791c32; background: #fbe1e7; }
 .smartnet-change-tag.comparison-warning { color: #713a00; background: #fff0cc; }
 .smartnet-change-tag.comparison-neutral { color: #294155; background: #e6edf4; }
-.smartnet-band-impact {
+.smartnet-result-row {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: .4rem 1rem;
-    padding: .6rem .9rem;
-    border-left: 4px solid #0d9488;
-    border-radius: 9px;
-    color: #123248;
-    background: #d9efed;
+    gap: .35rem .75rem;
+    border-bottom: 1px solid rgba(100, 140, 150, .26);
+    padding: .35rem 0;
 }
-.smartnet-band-impact strong { font-size: 1.28rem; }

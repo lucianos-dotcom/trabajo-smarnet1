@@ -101,7 +101,7 @@ Variables opcionales: `PLAYWRIGHT_MODULE` (ruta al módulo), `CHROMIUM_PATH` (ej
 
 ## Resultados para toda la familia
 
-La pantalla final destaca el diagnóstico y las partes que necesitan atención. La comparación de bandas aparece cuando hay grupos activos en 2,4 o 5 GHz. Al probar una mejora se muestran los gráficos de los valores que cambian o siguen saturados.
+La pantalla final destaca el diagnóstico y las partes que necesitan atención. La comparación de bandas aparece cuando hay grupos activos en 2,4 o 5 GHz. Al probar una mejora se muestra una conclusión breve. Los gráficos de antes y después están en **Detalle y números**.
 
 Los indicadores de demanda están en **Detalle y números**. Las matrices y fórmulas se documentan aquí para preparar la presentación.
 

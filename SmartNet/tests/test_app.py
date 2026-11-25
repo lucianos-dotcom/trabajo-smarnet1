@@ -84,18 +84,15 @@ class AppTests(unittest.TestCase):
         app.selectbox(key='preset').select('Wi-Fi saturado · Plan asimétrico 300/10 Mbps').run()
         original = app.session_state['rows']
         app.button(key='try_bands').click().run()
-        self.assertTrue(any('134.1%' in item.value and 'Los equipos llevan su tráfico' in item.value
-                            for item in app.markdown))
-        self.assertTrue(app.warning)
-        self.assertTrue(any('Deja la descarga para después' in item.value
-                            and 'Para un equipo fijo, prueba un cable de red' in item.value for item in app.info))
+        self.assertTrue(any('134.1%' in item.value for item in app.markdown))
+        self.assertTrue(any('Todavía falta capacidad en 5 GHz' in item.value for item in app.warning))
+        self.assertTrue(any('Deja la descarga para después' in item.value for item in app.caption))
         app.button(key='try_bands').click().run()
         app.checkbox(key='pause').check().run()
-        self.assertTrue(any('Prueba cambiar equipos de banda' in item.value and '35.9% a 62.0%' in item.value
-                            for item in app.info))
+        self.assertTrue(any('Prueba cambiar equipos de banda' in item.value for item in app.caption))
         app.button(key='try_bands').click().run()
         self.assertTrue(any('62.0%' in item.value for item in app.markdown))
-        self.assertTrue(any('las dos bandas tienen capacidad' in item.value for item in app.success))
+        self.assertTrue(any('El Wi-Fi alcanza con estos cambios' in item.value for item in app.success))
         self.assertEqual(app.session_state['rows'], original)
 
     def test_wifi_advice_when_no_action_relieves_overload(self):
@@ -105,7 +102,7 @@ class AppTests(unittest.TestCase):
         next(box for box in app.selectbox if box.label == 'Equipo 1').select('📷 Cámara de seguridad').run()
         next(box for box in app.selectbox if box.label == 'Conexión del grupo 1').select('2,4 GHz').run()
         next(box for box in app.number_input if box.label == 'Cantidad 1').set_value(50).run()
-        self.assertTrue(any('Qué probar en casa' in item.value and '5 GHz' in item.value for item in app.info))
+        self.assertTrue(any('Qué probar' in item.value and '5 GHz' in item.value for item in app.caption))
         self.assertFalse(app.exception)
 
     def test_speed_result_is_used_automatically(self):

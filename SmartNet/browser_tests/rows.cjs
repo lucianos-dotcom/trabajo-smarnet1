@@ -147,11 +147,17 @@ async function verify(page) {
   const solution = improvement.getByRole('button', { name: 'Probar cambio de bandas', includeHidden: true });
   await goTo(3);
   await solution.click();
-  await improvement.getByText('Grupo 1 · 📷 Cámara de seguridad: 5 GHz → 2,4 GHz', { exact: true }).waitFor();
-  await improvement.getByText('Grupo 3 · 📺 TV Box / decodificador: No sé la banda → 5 GHz', { exact: true }).waitFor();
-  assert.equal(await improvement.getByText(/^Grupo 2 /).count(), 0);
-  await improvement.getByRole('img', { name: 'Antes: faltan datos · Con la propuesta: 10.9%', exact: true }).waitFor();
-  await improvement.getByRole('img', { name: 'Antes: faltan datos · Con la propuesta: 1.7%', exact: true }).waitFor();
+  const moveDetails = page.getByTestId('stExpander').filter({hasText:'Detalle y números'});
+  const movesHeading = moveDetails.getByText('Equipos que cambiarían de banda',{exact:true});
+  await movesHeading.waitFor({state:'attached'});
+  if (!await movesHeading.isVisible()) {
+    await page.getByText('Detalle y números',{exact:true}).click();
+  }
+  await moveDetails.getByText('Grupo 1 · 📷 Cámara de seguridad: 5 GHz → 2,4 GHz', { exact: true }).waitFor();
+  await moveDetails.getByText('Grupo 3 · 📺 TV Box / decodificador: No sé la banda → 5 GHz', { exact: true }).waitFor();
+  assert.equal(await moveDetails.getByText(/^Grupo 2 /).count(), 0);
+  await moveDetails.getByRole('img', { name: 'Antes: faltan datos · Con la propuesta: 10.9%', exact: true }).waitFor();
+  await moveDetails.getByRole('img', { name: 'Antes: faltan datos · Con la propuesta: 1.7%', exact: true }).waitFor();
   await checkRows(original);
 
   await add.click();
