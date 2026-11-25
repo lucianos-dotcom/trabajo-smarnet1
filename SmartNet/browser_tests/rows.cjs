@@ -156,8 +156,8 @@ async function verify(page) {
   await moveDetails.getByText('Grupo 1 · 📷 Cámara de seguridad: 5 GHz → 2,4 GHz', { exact: true }).waitFor();
   await moveDetails.getByText('Grupo 3 · 📺 TV Box / decodificador: No sé la banda → 5 GHz', { exact: true }).waitFor();
   assert.equal(await moveDetails.getByText(/^Grupo 2 /).count(), 0);
-  await moveDetails.getByRole('img', { name: 'Antes: faltan datos · Con la propuesta: 10.9%', exact: true }).waitFor();
-  await moveDetails.getByRole('img', { name: 'Antes: faltan datos · Con la propuesta: 1.7%', exact: true }).waitFor();
+  await improvement.getByRole('img', { name: 'Antes: faltan datos · Con la propuesta: 10.9%', exact: true }).waitFor();
+  await improvement.getByRole('img', { name: 'Antes: faltan datos · Con la propuesta: 1.7%', exact: true }).waitFor();
   await checkRows(original);
 
   await add.click();

@@ -224,21 +224,39 @@ def recommend_wifi_step(rows, current, capacity, upload, caps, pause, lower, mov
     return practical
 
 
-def show_result_status(label, items, incomplete=False):
-    states = {item['state'] for item in items}
-    if 'over' in states:
-        result, tone = 'Se queda corto', 'comparison-worse'
-    elif 'tight' in states:
-        result, tone = 'Poco margen', 'comparison-warning'
-    elif incomplete or 'unknown' in states:
-        result, tone = 'Faltan datos', 'comparison-neutral'
-    else:
-        result, tone = 'Tiene margen', 'comparison-better'
-    st.markdown(
-        f'<div class="smartnet-result-row"><strong>{label}</strong>'
-        f'<span class="smartnet-change-tag {tone}">{result}</span></div>',
-        unsafe_allow_html=True,
-    )
+def show_result_bars(items, incomplete_bands):
+    labels = {'download': 'Descarga del plan', 'upload': 'Subida del plan'}
+    readings = [
+        (labels.get(item['key'], item['key']),
+         None if incomplete_bands and item['key'] in BANDS[:2] else item['usage'])
+        for item in items
+    ]
+    scale = max(100.0, *(value or 0 for _, value in readings)) * 1.06
+    bars = []
+    for label, value in readings:
+        reading = 'Faltan datos' if value is None else f'{value:.1f}%'.replace('.', ',')
+        _, status = STATES[state(value)]
+        description = reading if value is None else f'{reading}, {status}'
+        bars.append(
+            f'<div class="smartnet-result-bar" role="img" aria-label="{label}: {description}">'
+            f'<div class="smartnet-bar-label"><strong>{label}</strong><span>{reading}</span></div>'
+            f'{usage_bar(value, scale)}</div>'
+        )
+    st.markdown(f'<div class="smartnet-result-bars">{"".join(bars)}</div>', unsafe_allow_html=True)
+    if any(value is not None for _, value in readings):
+        st.caption('Uso estimado. Si la barra pasa la marca del 100%, falta capacidad.')
+
+
+def changed_readings(comparisons, baseline, improved):
+    result = []
+    for index, (title, before, after) in enumerate(comparisons):
+        unit = '%'
+        if index < 2 and before is None and after is None:
+            key = ('down', 'up')[index]
+            before, after, unit = baseline[key], improved[key], ' Mbps'
+        if before != after and (before is None or after is None or not isclose(before, after)):
+            result.append((title, before, after, unit))
+    return result
 
 
 PRESENTATION_PAGES = (
@@ -438,9 +456,7 @@ with st.container(key='presentation_frame'):
                     st.markdown(f'### {headline}')
                     st.write(explanation)
                 if active and not all(item['state'] == 'unknown' for item in items):
-                    show_result_status('Plan de internet', items[:2])
-                    if model_wifi:
-                        show_result_status('Wi-Fi de la casa', items[2:], incomplete_bands)
+                    show_result_bars(items, incomplete_bands)
                 if overdemand:
                     st.caption('Necesitan atención: ' + ' · '.join(overdemand))
 
@@ -474,6 +490,9 @@ with st.container(key='presentation_frame'):
             improved = network_summary(proposed, capacity, upload, preview_caps) if testing else baseline
             changed = [row for row in proposed if row['count']] != [row for row in rows if row['count']]
             comparisons = comparison_values(baseline, improved, known, compare_wifi)
+            changes_to_chart = changed_readings(comparisons, baseline, improved) if changed else []
+            focus_wifi = band_proposal or any(item['state'] == 'over' for item in items[2:])
+            visible_charts = sorted(changes_to_chart, key=lambda row: (row[0] in BANDS[:2]) != focus_wifi)[:2]
             if testing:
                 if not changed:
                     st.info('Esta opción no cambia las actividades ni las bandas de tu escenario.')
@@ -491,6 +510,15 @@ with st.container(key='presentation_frame'):
                         st.success('Los equipos necesitan mover menos datos.')
                     else:
                         st.info('La propuesta cambia cómo se reparte el tráfico entre las bandas.')
+                    if visible_charts:
+                        st.markdown('#### Antes y después')
+                        if any(unit == '%' for _, _, _, unit in visible_charts):
+                            st.caption('La marca del 100% indica el límite de capacidad.')
+                        for col, (title, before, after, unit) in zip(st.columns(len(visible_charts)), visible_charts):
+                            with col:
+                                st.markdown(f'**{title}**')
+                                show_change_chart(before, after, unit)
+                                show_change_status(before, after, unit)
 
             advice = recommend_wifi_step(rows, improved, capacity, upload, preview_caps, pause, lower, band_proposal)
             if advice:
@@ -532,19 +560,13 @@ with st.container(key='presentation_frame'):
                              f"**{data['capacity']:g} Mbps** en este ejemplo. "
                              f"Eso equivale al **{data['usage']:.1f}%** de su capacidad.")
 
-            if changed:
-                st.markdown('#### Antes y después')
-                st.caption('En los porcentajes, la marca vertical indica el límite del 100%.')
-                if not isclose(baseline['down'], improved['down']):
-                    st.metric('Demanda de descarga con estos cambios', f"{improved['down']:g} Mbps",
-                              delta=f"{improved['down'] - baseline['down']:g} Mbps", delta_color='inverse')
-                for index, (title, before, after) in enumerate(comparisons):
-                    unit = '%'
-                    if index < 2 and before is None and after is None:
-                        key = ('down', 'up')[index]
-                        before, after, unit = baseline[key], improved[key], ' Mbps'
-                    if before == after or (before is not None and after is not None and isclose(before, after)):
-                        continue
+            extra_charts = [reading for reading in changes_to_chart if reading not in visible_charts]
+            if changed and not isclose(baseline['down'], improved['down']):
+                st.metric('Demanda de descarga con estos cambios', f"{improved['down']:g} Mbps",
+                          delta=f"{improved['down'] - baseline['down']:g} Mbps", delta_color='inverse')
+            if extra_charts:
+                st.markdown('#### Otros cambios')
+                for title, before, after, unit in extra_charts:
                     st.markdown(f'**{title}**')
                     show_change_chart(before, after, unit)
                     show_change_status(before, after, unit)
