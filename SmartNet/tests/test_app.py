@@ -86,10 +86,10 @@ class AppTests(unittest.TestCase):
         app.button(key='try_bands').click().run()
         self.assertTrue(any('134.1%' in item.value for item in app.markdown))
         self.assertTrue(any('Todavía falta capacidad en 5 GHz' in item.value for item in app.warning))
-        self.assertTrue(any('Deja la descarga para después' in item.value for item in app.caption))
+        self.assertTrue(any('Deja la descarga para después' in item.value for item in app.markdown))
         app.button(key='try_bands').click().run()
         app.checkbox(key='pause').check().run()
-        self.assertTrue(any('Prueba cambiar equipos de banda' in item.value for item in app.caption))
+        self.assertTrue(any('Prueba cambiar equipos de banda' in item.value for item in app.markdown))
         app.button(key='try_bands').click().run()
         self.assertTrue(any('62.0%' in item.value for item in app.markdown))
         self.assertTrue(any('El Wi-Fi alcanza con estos cambios' in item.value for item in app.success))
@@ -102,7 +102,27 @@ class AppTests(unittest.TestCase):
         next(box for box in app.selectbox if box.label == 'Equipo 1').select('📷 Cámara de seguridad').run()
         next(box for box in app.selectbox if box.label == 'Conexión del grupo 1').select('2,4 GHz').run()
         next(box for box in app.number_input if box.label == 'Cantidad 1').set_value(50).run()
-        self.assertTrue(any('Qué probar' in item.value and '5 GHz' in item.value for item in app.caption))
+        self.assertTrue(any('Qué probar' in item.value and '5 GHz' in item.value for item in app.markdown))
+        self.assertFalse(app.exception)
+
+    def test_social_preset_and_short_videos(self):
+        app = self.app()
+        app.selectbox(key='preset').select('Solo uso el celular para redes sociales').run()
+        rows = app.session_state['rows']
+        self.assertEqual(len(rows), 1)
+        self.assertEqual((rows[0]['count'], rows[0]['band']), (1, 'No sé la banda'))
+        self.assertTrue(any('uso de redes que elegiste' in item.value for item in app.markdown))
+        app.session_state['last_speed'] = dict(download=42, upload=7, latency=20, jitter=2,
+                                               id='social', timestamp='2026-11-25T00:00:00Z')
+        app.session_state['speed_history'] = []
+        app.run()
+        self.assertTrue(any('leer mensajes y revisar publicaciones' in item.value for item in app.markdown))
+        self.assertFalse(any(box.key in ('pause', 'lower') for box in app.checkbox))
+        self.assertFalse(any(button.key == 'try_bands' for button in app.button))
+        next(box for box in app.selectbox if box.label == 'Actividad 1').select(
+            'Videos cortos en redes (Reels o TikTok)').run()
+        self.assertEqual(app.metric[0].value, '3 Mbps')
+        self.assertTrue(any('Hay capacidad para ver videos cortos' in item.value for item in app.markdown))
         self.assertFalse(app.exception)
 
     def test_speed_result_is_used_automatically(self):

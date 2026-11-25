@@ -1,9 +1,15 @@
+from importlib import reload
 from math import isclose
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
-from household import (ACTIVITIES, DEVICES, PRESETS, BANDS,
+import household
+
+# Streamlit Cloud may keep the previous catalog loaded after updating the app.
+if not hasattr(household, 'SHORT_VIDEO_ACTIVITY'):
+    reload(household)
+from household import (ACTIVITIES, DEVICES, PRESETS, BANDS, SHORT_VIDEO_ACTIVITY,
                        network_summary, improve, suggest_bands)
 from report_image import simulation_png
 from speed_test import render_speed_test, valid_result
@@ -25,6 +31,9 @@ SCENARIOS = {
     if name not in ('Ejemplo de la asignatura', 'Demostración de clase: ambas bandas saturadas',
                     'Casa con Wi-Fi saturado')
 }
+SOCIAL_PRESET = 'Solo uso el celular para redes sociales'
+SOCIAL_MESSAGES = 'Redes sociales, WhatsApp y navegación'
+SCENARIOS = {SOCIAL_PRESET: [(0, 0, 1)], **SCENARIOS}
 SCENARIOS.update(dict.fromkeys(CLASSROOM_UPLOADS, CLASSROOM_GROUPS))
 CLASSROOM_WIFI_CAPS = dict(zip(BANDS[:2], (20.0, 70.0)))
 
@@ -38,6 +47,8 @@ def replace_rows(rows):
 
 def load_preset():
     st.session_state.show_band_proposal = False
+    st.session_state.pause = False
+    st.session_state.lower = False
     preset = st.session_state.preset
     groups = SCENARIOS[preset]
     bands = [BANDS[3]] * len(groups)
@@ -182,7 +193,7 @@ def wifi_usage(report):
 def recommend_wifi_step(rows, current, capacity, upload, caps, pause, lower, move):
     overloaded = [band for band in BANDS[:2] if (current['bands'][band]['usage'] or 0) > 100]
     if not overloaded:
-        return
+        return None, None
 
     if len(overloaded) == 2:
         practical = 'Conecta por cable un equipo fijo si puedes y reparte las actividades más pesadas en distintos horarios.'
@@ -193,19 +204,19 @@ def recommend_wifi_step(rows, current, capacity, upload, caps, pause, lower, mov
 
     usage = wifi_usage(current)
     if not usage:
-        return practical
+        return None, practical
 
     def rank(load):
         return sum(value > 100 for value in load.values()), max(load.values())
 
     alternatives = [
-        ('Deja la descarga para después', True, lower, move, not pause),
-        ('Cambia los videos de 4K a HD', pause, True, move, not lower),
-        ('Prueba cambiar equipos de banda', pause, lower, True, not move),
+        ('pause', 'Deja la descarga para después', True, lower, move, not pause),
+        ('hd', 'Cambia los videos de 4K a HD', pause, True, move, not lower),
+        ('bands', 'Prueba cambiar equipos de banda', pause, lower, True, not move),
     ]
     best = rank(usage)
     recommendation = None
-    for action, try_pause, try_hd, try_move, available in alternatives:
+    for action_key, action, try_pause, try_hd, try_move, available in alternatives:
         if not available:
             continue
         candidate = improve(rows, try_pause, try_hd)
@@ -214,14 +225,14 @@ def recommend_wifi_step(rows, current, capacity, upload, caps, pause, lower, mov
         result = wifi_usage(network_summary(candidate, capacity, upload, caps))
         if result and rank(result) < best:
             best = rank(result)
-            recommendation = action, result
+            recommendation = action_key, action, result
 
     if recommendation:
-        action, result = recommendation
+        action_key, action, result = recommendation
         if any(value > 100 for value in result.values()):
-            return f'{action}. Aliviaría el Wi-Fi y todavía quedaría una banda por revisar.'
-        return f'{action}. Con esa acción, las bandas tendrían capacidad para las actividades elegidas.'
-    return practical
+            return action_key, f'{action}. Aliviaría el Wi-Fi y todavía quedaría una banda por revisar.'
+        return action_key, f'{action}. Con esa acción, las bandas tendrían capacidad para las actividades elegidas.'
+    return None, practical
 
 
 def show_result_bars(items, incomplete_bands):
@@ -286,15 +297,15 @@ with st.container(key='hero'):
     )
 
 hidden_pages = ', '.join(f'.st-key-page_{key}' for key, _ in PRESENTATION_PAGES if key != page_key)
-if page_key == 'result':
+if page_key != 'connection':
     hidden_pages += ', .st-key-hero'
 st.markdown(f'<style>{hidden_pages} {{display: none !important;}}</style>', unsafe_allow_html=True)
 with st.container(border=True, key='presentation_nav'):
     st.progress((presentation_step + 1) / len(PRESENTATION_PAGES),
                 text=f'Pantalla {presentation_step + 1} de {len(PRESENTATION_PAGES)}')
-    if page_key == 'result':
+    if page_key != 'connection':
         st.markdown('**SmartNet**')
-    else:
+    if page_key != 'result':
         st.subheader(question)
     back, forward = st.columns(2)
     back.button('← Atrás', key='presentation_back', disabled=presentation_step == 0,
@@ -393,6 +404,8 @@ with st.container(key='presentation_frame'):
             if classroom_demo:
                 st.write('Dos cámaras, una videollamada y tres tablets comparten 2,4 GHz. '
                          'En 5 GHz, un televisor reproduce una serie en 4K mientras un notebook descarga un juego.')
+            if st.session_state.preset == SOCIAL_PRESET:
+                st.caption('El celular ya está agregado. Si ves Reels o TikTok, elige «Videos cortos en redes» como actividad.')
             if not custom_scenario:
                 equipment = sum(row['count'] for row in current_rows())
                 st.caption(f'Equipos en este escenario: {equipment}.')
@@ -413,7 +426,8 @@ with st.container(key='presentation_frame'):
                 with st.container(border=True):
                     a,b,c,d = st.columns([3,4,2,3])
                     device = a.selectbox(f'Equipo {i+1}', DEVICES, index=DEVICES.index(row['device']), key=row_key('device', i), on_change=choose_device, args=(i,))
-                    activity = b.selectbox(f'Actividad {i+1}', ACTIVITIES, index=ACTIVITIES.index(row['activity']), key=row_key('activity', i))
+                    activity = b.selectbox(f'Actividad {i+1}', ACTIVITIES, index=ACTIVITIES.index(row['activity']), key=row_key('activity', i),
+                                           format_func=lambda value: SOCIAL_MESSAGES if value == ACTIVITIES[0] else value)
                     count = c.number_input(f'Cantidad {i+1}', min_value=0, max_value=100, value=row['count'], step=1, key=row_key('count', i))
                     band = d.selectbox(f'Conexión del grupo {i+1}', BANDS, index=BANDS.index(row.get('band',BANDS[3])), key=row_key('band', i))
                     st.button('Quitar este grupo', key=row_key('remove', i), on_click=remove_row, args=(i,))
@@ -439,6 +453,11 @@ with st.container(key='presentation_frame'):
         upload_note = f'{upload:g} Mbps de subida' if upload is not None else 'subida por confirmar'
         parts = {'download': 'descarga del plan', 'upload': 'subida del plan'}
         overdemand = [parts.get(item['key'], item['key']) for item in items if item['state'] == 'over']
+        active_rows = [row for row in rows if row['count']]
+        social_only = active and all(
+            row['device'] == DEVICES[0] and row['activity'] in (ACTIVITIES[0], SHORT_VIDEO_ACTIVITY)
+            for row in active_rows
+        )
 
         st.subheader('Resultado de la prueba')
         with st.container(border=True, key='family_summary'):
@@ -446,7 +465,19 @@ with st.container(key='presentation_frame'):
             with diagnosis:
                 if active and all(item['state'] == 'unknown' for item in items):
                     st.markdown('### 🏠 Falta una referencia de velocidad')
-                    st.write('Haz el test o ingresa los datos de tu plan para saber si alcanza.')
+                    if social_only:
+                        st.write('Haz el test para saber si tu velocidad alcanza para el uso de redes que elegiste.')
+                    else:
+                        st.write('Haz el test o ingresa los datos de tu plan para saber si alcanza.')
+                elif social_only and known and not overdemand:
+                    usage = ('ver videos cortos' if any(row['activity'] == SHORT_VIDEO_ACTIVITY for row in active_rows)
+                             else 'leer mensajes y revisar publicaciones')
+                    if upload is None:
+                        st.markdown('### La descarga alcanza para tus redes')
+                        st.write(f'Hay capacidad para {usage}. Falta conocer la subida para evaluar el envío de contenido.')
+                    else:
+                        st.markdown('### La velocidad alcanza para tus redes')
+                        st.write(f'Hay capacidad para {usage} según la referencia que estás usando.')
                 elif any(item['state'] == 'over' for item in items[2:]) and all(
                     item['state'] in ('good', 'tight') for item in items[:2]
                 ):
@@ -464,16 +495,29 @@ with st.container(key='presentation_frame'):
                 st.image(str(Path(__file__).with_name('assets') / 'result-router.webp'), width='stretch')
 
         with st.container(border=True, key='improvements'):
-            st.subheader('Prueba una mejora')
-            downloads, video, wifi = st.columns(3)
-            pause = downloads.checkbox('Dejar las descargas para después', key='pause')
-            lower = video.checkbox('Cambiar de 4K a HD', key='lower')
-            can_suggest = any(row['count'] and row['band'] != BANDS[2] for row in rows)
+            has_download = any(row['activity'] == ACTIVITIES[5] for row in active_rows)
+            has_4k = any(row['activity'] == ACTIVITIES[3] for row in active_rows)
+            wireless = [row for row in active_rows if row['band'] != BANDS[2]]
+            can_suggest = bool(wireless) and (len(wireless) > 1 or model_wifi) and suggest_bands(wireless) != wireless
+            actions_available = [
+                key for key, available in (('pause', has_download), ('hd', has_4k), ('bands', can_suggest))
+                if available
+            ]
+            st.subheader('Prueba una mejora' if actions_available else 'Qué hacer ahora')
+            recommendation_slot = st.empty()
+            pause = lower = False
             band_proposal = can_suggest and st.session_state.get('show_band_proposal', False)
-            button_label = 'Retirar cambio de bandas' if band_proposal else 'Probar cambio de bandas'
-            if wifi.button(button_label, key='try_bands', disabled=not can_suggest):
-                st.session_state.show_band_proposal = not band_proposal
-                st.rerun()
+            for col, option in zip(st.columns(len(actions_available)) if actions_available else [], actions_available):
+                with col.container(key=f'option_{option}'):
+                    if option == 'pause':
+                        pause = st.checkbox('Dejar las descargas para después', key='pause')
+                    elif option == 'hd':
+                        lower = st.checkbox('Cambiar de 4K a HD', key='lower')
+                    else:
+                        button_label = 'Retirar cambio de bandas' if band_proposal else 'Probar cambio de bandas'
+                        if st.button(button_label, key='try_bands'):
+                            st.session_state.show_band_proposal = not band_proposal
+                            st.rerun()
 
             testing = pause or lower or band_proposal
             compare_wifi = model_wifi or band_proposal
@@ -520,15 +564,31 @@ with st.container(key='presentation_frame'):
                                 show_change_chart(before, after, unit)
                                 show_change_status(before, after, unit)
 
-            advice = recommend_wifi_step(rows, improved, capacity, upload, preview_caps, pause, lower, band_proposal)
-            if advice:
-                st.caption(f'**Qué probar.** {advice}')
-            elif not testing and items[0]['state'] == 'over' and any(
-                row['count'] and row['activity'] == ACTIVITIES[5] for row in rows
-            ):
-                st.caption('**Qué probar.** Deja las descargas grandes para después.')
-            elif (improved['up_usage'] or 0) > 100:
-                st.caption('**Qué probar.** Deja los respaldos de archivos para después y revisa los equipos que están enviando datos.')
+            recommended, advice = recommend_wifi_step(
+                rows, improved, capacity, upload, preview_caps, pause, lower, band_proposal,
+            )
+            if not advice and not testing and items[0]['state'] == 'over' and has_download:
+                recommended, advice = 'pause', 'Deja las descargas grandes para después.'
+            elif not advice and (improved['up_usage'] or 0) > 100:
+                advice = 'Deja los respaldos de archivos para después y revisa los equipos que están enviando datos.'
+            with recommendation_slot.container():
+                if advice:
+                    st.markdown(f'**Qué probar.** {advice}')
+                elif not actions_available:
+                    if not active:
+                        st.caption('Agrega un equipo en la pantalla anterior para obtener una recomendación.')
+                    elif not known:
+                        st.caption('Mide tu conexión para que SmartNet pueda recomendar un cambio.')
+                    elif overdemand:
+                        st.caption('Prueba reducir los equipos en uso al mismo tiempo o repite el test cerca del router.')
+                    else:
+                        st.caption('Para el uso que elegiste, no hace falta cambiar nada ahora.')
+                if recommended in actions_available:
+                    st.markdown(
+                        f'<style>.st-key-option_{recommended} {{background: rgba(13, 148, 136, .10);'
+                        'border-left: 3px solid #0d9488; border-radius: 8px; padding: .45rem .65rem;}</style>',
+                        unsafe_allow_html=True,
+                    )
 
         with st.expander('Detalle y números'):
             with st.container(key='slide_context'):
@@ -593,7 +653,7 @@ with st.container(key='presentation_frame'):
             image = simulation_png(st.session_state.preset, total_equipment, connection, actions,
                                    comparisons, report_changes)
             st.download_button('Descargar resumen como imagen', image, 'smartnet-resumen.png',
-                               'image/png', type='primary', on_click='ignore')
+                               'image/png', on_click='ignore')
 
 with st.container(border=True, key='bottom_nav'):
     back, forward = st.columns(2)
@@ -601,7 +661,7 @@ with st.container(border=True, key='bottom_nav'):
                 on_click=set_presentation_step, args=(max(0, presentation_step - 1),))
     if presentation_step < len(PRESENTATION_PAGES) - 1:
         label = 'Siguiente pantalla →' if page_key == 'connection' else 'Siguiente · Ver resultado →'
-        forward.button(label, key='bottom_next', type='primary',
+        forward.button(label, key='bottom_next',
                        on_click=set_presentation_step, args=(presentation_step + 1,))
     else:
         forward.button('Volver al inicio', key='bottom_restart', on_click=set_presentation_step, args=(0,))

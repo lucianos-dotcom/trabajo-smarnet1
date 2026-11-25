@@ -154,3 +154,8 @@ div.stButton > button { border-radius: 12px; min-height: 44px; }
 @media (max-width: 640px) {
     .st-key-result_art img { max-height: 7rem; object-position: center 63%; }
 }
+
+@media (max-width: 640px) {
+    .st-key-presentation_nav [data-testid="stHorizontalBlock"] { flex-wrap: nowrap; }
+    .st-key-presentation_nav [data-testid="stColumn"] { flex: 1 1 0; min-width: 0; }
+}

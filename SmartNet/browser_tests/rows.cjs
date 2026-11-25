@@ -7,7 +7,7 @@ const pc = '💻 Notebook o PC';
 const tv = '📺 Smart TV';
 const consoleDevice = '🎮 Consola';
 const camera = '📷 Cámara de seguridad';
-const chat = 'WhatsApp y navegar';
+const chat = 'Redes sociales, WhatsApp y navegación';
 const call = 'Videollamada o clase online';
 const hd = 'Ver videos o series en HD';
 const cloud = 'Cámara transmitiendo a la nube';
@@ -24,6 +24,7 @@ const presets = {
   'Una tarde en casa': [
     [phone, chat, 2], [pc, call, 1], [tv, hd, 1], [consoleDevice, 'Jugar online', 1],
   ],
+  'Solo uso el celular para redes sociales': [[phone, chat, 1]],
   'Todos viendo series': [[phone, hd, 2], [tv, 'Ver videos o series en 4K', 2]],
   'Descargas y clases online': [[pc, call, 2], [consoleDevice, 'Descargar juegos o archivos', 2], [tv, hd, 1]],
   'Casa con cámaras y dispositivos inteligentes': [
@@ -173,7 +174,7 @@ async function verify(page) {
 
   await choose(preset, 'Empezar desde cero');
   await checkRows([]);
-  await solution.and(page.locator('button:disabled')).waitFor({ state: 'attached' });
+  await solution.waitFor({ state: 'detached' });
   await add.click();
   await checkRows([[phone, chat, 1]]);
   await remove.first().click();

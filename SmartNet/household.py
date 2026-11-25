@@ -3,8 +3,9 @@ import numpy as np
 from model import calculate
 
 DEVICES = ['📱 Celular', '💻 Notebook o PC', '📺 Smart TV', '🎮 Consola', '📷 Cámara de seguridad', '📟 Tablet', '📺 TV Box / decodificador', '🔊 Parlante inteligente', '💡 Ampolleta o enchufe inteligente', '🖨️ Impresora Wi-Fi', '🤖 Aspiradora robot']
-ACTIVITIES = ['WhatsApp y navegar', 'Ver videos o series en HD', 'Videollamada o clase online', 'Ver videos o series en 4K', 'Jugar online', 'Descargar juegos o archivos', 'Cámara transmitiendo a la nube', 'Dispositivo inteligente en espera', 'Escuchar música', 'Subir archivos o respaldo a la nube', 'Conectado sin uso']
-RATES = np.array([0.5, 5, 1.5, 25, 3, 50, 0.1, 0.02, 0.3, 0.5, 0.01], dtype=float)
+SHORT_VIDEO_ACTIVITY = 'Videos cortos en redes (Reels o TikTok)'
+ACTIVITIES = ['WhatsApp y navegar', 'Ver videos o series en HD', 'Videollamada o clase online', 'Ver videos o series en 4K', 'Jugar online', 'Descargar juegos o archivos', 'Cámara transmitiendo a la nube', 'Dispositivo inteligente en espera', 'Escuchar música', 'Subir archivos o respaldo a la nube', 'Conectado sin uso', SHORT_VIDEO_ACTIVITY]
+RATES = np.array([0.5, 5, 1.5, 25, 3, 50, 0.1, 0.02, 0.3, 0.5, 0.01, 3.0], dtype=float)
 PRESETS = {
     'Una tarde en casa': [(0, 0, 2), (1, 2, 1), (2, 1, 1), (3, 4, 1)],
     'Todos viendo series': [(0, 1, 2), (2, 3, 2)],
@@ -40,7 +41,7 @@ def improve(rows, pause_downloads, lower_quality):
     return result
 
 # Download / upload estimates per active device, in Mbps.
-UPLOAD_RATES = np.array([0.1, 0.1, 1.5, 0.1, 0.5, 0.5, 2, 0.02, 0.05, 10, 0.01])
+UPLOAD_RATES = np.array([0.1, 0.1, 1.5, 0.1, 0.5, 0.5, 2, 0.02, 0.05, 10, 0.01, 0.1])
 BANDS = ['2,4 GHz', '5 GHz', 'Cable de red', 'No sé la banda']
 SIGNALS = {'Cerca y sin obstáculos (100%)': 1.0, 'Con paredes o distancia (50%)': 0.5, 'Lejos o con muchos obstáculos (25%)': 0.25}
 
