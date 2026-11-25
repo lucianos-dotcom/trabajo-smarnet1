@@ -205,8 +205,20 @@ def wifi_usage(report):
 
 
 def recommend_wifi_step(rows, current, capacity, upload, caps, pause, lower, move):
+    overloaded = [band for band in BANDS[:2] if (current['bands'][band]['usage'] or 0) > 100]
+    if not overloaded:
+        return
+
+    if len(overloaded) == 2:
+        practical = 'Conecta por cable un equipo fijo si puedes y reparte las actividades más pesadas en distintos horarios.'
+    elif overloaded[0] == BANDS[0]:
+        practical = 'Si hay poca señal, acerca el equipo al router. Si admite 5 GHz, prueba esa banda cuando tenga espacio.'
+    else:
+        practical = 'Si el equipo está lejos o detrás de paredes, acércalo al router. Para un equipo fijo, prueba un cable de red.'
+
     usage = wifi_usage(current)
-    if not usage or max(usage.values()) <= 100:
+    if not usage:
+        st.info(f'**Qué probar en casa.** {practical} Completa las bandas pendientes para comparar más opciones.')
         return
 
     def rank(load):
@@ -246,7 +258,9 @@ def recommend_wifi_step(rows, current, capacity, upload, caps, pause, lower, mov
             else ' Las dos bandas quedarían con capacidad para las actividades elegidas.'
         )
         effects = ' y '.join(gains + increases)
-        st.info(f"**Siguiente paso. {action}.** {effects}.{takeaway}")
+        st.info(f"**Siguiente paso. {action}.** {effects}.{takeaway}\n\n**En casa.** {practical}")
+    else:
+        st.info(f'**Qué probar en casa.** {practical}')
 
 
 PRESENTATION_PAGES = (
@@ -449,6 +463,8 @@ with st.container(key='presentation_frame'):
                     st.caption('Necesitan atención: ' + ' · '.join(attention))
                 if incomplete_bands:
                     st.caption('Falta conocer la banda de algunos equipos para completar el resultado del Wi-Fi.')
+            if model_wifi:
+                recommend_wifi_step(rows, summary, capacity, upload, band_caps, False, False, False)
 
         if active:
             with st.container(key='initial_results'):
@@ -481,13 +497,10 @@ with st.container(key='presentation_frame'):
 
             compare_wifi = model_wifi or band_proposal
             preview_caps = band_caps or default_band_caps
-            if not (pause or lower or band_proposal):
-                if model_wifi:
-                    recommend_wifi_step(rows, summary, capacity, upload, preview_caps, pause, lower, band_proposal)
-                elif items[0]['state'] == 'over' and any(
-                    row['count'] and row['activity'] == ACTIVITIES[5] for row in rows
-                ):
-                    st.info('Si la descarga del plan se queda corta, prueba dejar las descargas grandes para después.')
+            if not (pause or lower or band_proposal) and not model_wifi and items[0]['state'] == 'over' and any(
+                row['count'] and row['activity'] == ACTIVITIES[5] for row in rows
+            ):
+                st.info('Si la descarga del plan se queda corta, prueba dejar las descargas grandes para después.')
 
             if pause or lower or band_proposal:
                 activity_changes = improve(rows, pause, lower)
@@ -531,6 +544,7 @@ with st.container(key='presentation_frame'):
                                 st.warning(f"El Wi-Fi todavía se queda corto en {' y '.join(remaining)}.")
                             else:
                                 st.success('Con estos cambios, las dos bandas tienen capacidad para las actividades elegidas.')
+                        recommend_wifi_step(rows, improved, capacity, upload, preview_caps, pause, lower, band_proposal)
 
                     st.caption('En los gráficos de porcentaje, la marca vertical indica el límite del 100%.')
                     plan_changes = []
@@ -558,8 +572,6 @@ with st.container(key='presentation_frame'):
                                 st.markdown(f'**{title}**')
                                 show_change_chart(before, after, unit)
                                 show_change_status(before, after, unit)
-                    if compare_wifi:
-                        recommend_wifi_step(rows, improved, capacity, upload, preview_caps, pause, lower, band_proposal)
                 if band_proposal and changes:
                     with st.container(border=True, key='final_explanation'):
                         st.markdown('#### Qué pasaría al mover los equipos')
