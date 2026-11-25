@@ -51,7 +51,8 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await page.getByRole('button',{name:'← Atrás',exact:true}).click();
     await chart.waitFor();
     assert(bytes<45000000,`Bounded data use: ${bytes}`);
-    assert.equal(requests,14);
+    // After six warm-up and latency requests, each direction can take one to four transfers.
+    assert(requests >= 8 && requests <= 14, `Unexpected request count: ${requests}`);
     mode='failure';
     await component.getByRole('button',{name:'Medir mi conexión ahora'}).click();
     await component.getByText('No se pudo completar la prueba',{exact:false}).waitFor();
