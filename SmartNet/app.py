@@ -149,7 +149,6 @@ def recommend_wifi_step(rows, current, capacity, upload, caps, pause, lower, mov
 
 
 PRESENTATION_PAGES = (
-    ('scenario', '¿Qué escenario quieres probar?'),
     ('connection', '¿Con qué velocidad cuenta la casa?'),
     ('equipment', '¿Qué equipos usan la conexión?'),
     ('result', '¿Qué mejorarías en esta casa?'),
@@ -173,7 +172,7 @@ with st.container(key='hero'):
         unsafe_allow_html=True,
     )
 
-presentation_step = st.session_state.get('presentation_step', 0)
+presentation_step = min(st.session_state.get('presentation_step', 0), len(PRESENTATION_PAGES) - 1)
 page_key, question = PRESENTATION_PAGES[presentation_step]
 hidden_pages = ', '.join(f'.st-key-page_{key}' for key, _ in PRESENTATION_PAGES if key != page_key)
 st.markdown(f'<style>{hidden_pages} {{display: none !important;}}</style>', unsafe_allow_html=True)
@@ -195,9 +194,32 @@ with st.container(border=True, key='presentation_nav'):
 with st.container(key='presentation_frame'):
     with st.container(key='page_connection'):
         classroom_demo = st.session_state.preset in CLASSROOM_UPLOADS
+        with st.container(border=True):
+            st.markdown('#### 📶 Test de velocidad')
+            location = st.selectbox('¿Dónde estás haciendo la prueba?', ['Donde noto lentitud', 'Cerca del router', 'Con cable de red', 'Otro lugar'], key='test_location')
+            result = render_speed_test(location)
+            if valid_result(result):
+                if st.session_state.get('speed_id') != result['id']:
+                    st.session_state.speed_id = result['id']
+                    st.session_state.last_speed = result
+                    history = st.session_state.get('speed_history', [])
+                    history.append(dict(result, lugar=result.get('location', 'Sin etiqueta')))
+                    st.session_state.speed_history = history[-5:]
+            if 'last_speed' in st.session_state:
+                result = st.session_state.last_speed
+                st.write(f"**Última prueba:** {result['download']:.1f} Mbps de descarga · {result['upload']:.1f} Mbps de subida · respuesta HTTP {result['latency']:.0f} ms.")
+                st.caption(f"Fecha UTC: {result['timestamp']}. Variación entre respuestas HTTP: {result['jitter']:.0f} ms. No es un ping ICMP ni mide pérdida de paquetes.")
+                if result['latency'] >= 150:
+                    st.info('La respuesta HTTP fue alta en esta prueba. Puede influir en actividades interactivas; repite cerca del router o con cable. No permite atribuir el problema al Wi-Fi por sí sola.')
+                if not classroom_demo:
+                    st.button('Usar esta medición en mi simulación', on_click=apply_measurement, key='apply_speed')
+                if len(st.session_state.speed_history) > 1:
+                    st.dataframe(pd.DataFrame(st.session_state.speed_history)[['timestamp','lugar','download','upload','latency']].rename(columns={'download':'Descarga Mbps','upload':'Subida Mbps','latency':'Respuesta HTTP ms'}), hide_index=True)
+            st.caption('Mide la conexión de este navegador mediante Cloudflare y guarda el resultado durante la sesión.')
+
         if classroom_demo:
             # Keep the manual widget values while the demonstration hides those controls.
-            for key in ('test_location', 'plan', 'trial_capacity', 'custom_capacity', 'use_test',
+            for key in ('plan', 'trial_capacity', 'custom_capacity', 'use_test',
                         'measured', 'know_upload', 'upload_capacity'):
                 if key in st.session_state:
                     st.session_state[key] = st.session_state[key]
@@ -206,27 +228,6 @@ with st.container(key='presentation_frame'):
             known = True
             st.write(f"Plan del ejemplo: **{capacity:g} Mbps de descarga** y **{upload:g} Mbps de subida**.")
         else:
-            with st.expander('📶 Hacer un test de velocidad aquí'):
-                location = st.selectbox('¿Dónde estás haciendo la prueba?', ['Donde noto lentitud', 'Cerca del router', 'Con cable de red', 'Otro lugar'], key='test_location')
-                result = render_speed_test(location)
-                if valid_result(result):
-                    if st.session_state.get('speed_id') != result['id']:
-                        st.session_state.speed_id = result['id']
-                        st.session_state.last_speed = result
-                        history = st.session_state.get('speed_history', [])
-                        history.append(dict(result, lugar=result.get('location', 'Sin etiqueta')))
-                        st.session_state.speed_history = history[-5:]
-                if 'last_speed' in st.session_state:
-                    result = st.session_state.last_speed
-                    st.write(f"**Última prueba:** {result['download']:.1f} Mbps de descarga · {result['upload']:.1f} Mbps de subida · respuesta HTTP {result['latency']:.0f} ms.")
-                    st.caption(f"Fecha UTC: {result['timestamp']}. Variación entre respuestas HTTP: {result['jitter']:.0f} ms. No es un ping ICMP ni mide pérdida de paquetes.")
-                    if result['latency'] >= 150:
-                        st.info('La respuesta HTTP fue alta en esta prueba. Puede influir en actividades interactivas; repite cerca del router o con cable. No permite atribuir el problema al Wi-Fi por sí sola.')
-                    st.button('Usar esta medición en mi simulación', on_click=apply_measurement, key='apply_speed')
-                    if len(st.session_state.speed_history) > 1:
-                        st.dataframe(pd.DataFrame(st.session_state.speed_history)[['timestamp','lugar','download','upload','latency']].rename(columns={'download':'Descarga Mbps','upload':'Subida Mbps','latency':'Respuesta HTTP ms'}), hide_index=True)
-                st.caption('Mide la conexión de este navegador mediante Cloudflare y guarda el resultado durante la sesión.')
-
             plan = st.selectbox('¿Cuántos megas tiene tu plan?', ['No sé mi velocidad', 'Ingresar otra velocidad', '20 Mbps', '100 Mbps', '300 Mbps', '500 Mbps', '600 Mbps', '800 Mbps', '940 Mbps', '1000 Mbps'], index=4, key='plan')
             known = plan != 'No sé mi velocidad'
             if not known:
@@ -243,10 +244,8 @@ with st.container(key='presentation_frame'):
             upload = st.number_input('Subida de referencia (Mbps)', min_value=0.001, value=20.0, format='%.2f', key='upload_capacity') if know_upload else None
 
 
-    with st.container(key='page_scenario'):
-        st.selectbox('Prueba un ejemplo o arma tu casa', list(SCENARIOS), key='preset', on_change=load_preset)
-
     with st.container(key='page_equipment'):
+        st.selectbox('Prueba un ejemplo o arma tu casa', list(SCENARIOS), key='preset', on_change=load_preset)
         with st.container(key=f'scenario_{st.session_state.row_revision}'):
             custom_scenario = st.session_state.preset == 'Empezar desde cero'
             if classroom_demo:
@@ -255,24 +254,21 @@ with st.container(key='presentation_frame'):
             if not custom_scenario:
                 equipment = sum(row['count'] for row in current_rows())
                 st.caption(f'Equipos en este escenario: {equipment}.')
-            show_equipment = custom_scenario or st.toggle('Ver o editar equipos', key='edit_equipment')
-            rows = current_rows()
-            if show_equipment:
-                st.caption('Agrupa los equipos que hacen lo mismo y usan la misma conexión.')
-                rows = []
-                for i,row in enumerate(st.session_state.rows):
-                    with st.container(border=True):
-                        a,b,c,d = st.columns([3,4,2,3])
-                        device = a.selectbox(f'Equipo {i+1}', DEVICES, index=DEVICES.index(row['device']), key=row_key('device', i), on_change=choose_device, args=(i,))
-                        activity = b.selectbox(f'Actividad {i+1}', ACTIVITIES, index=ACTIVITIES.index(row['activity']), key=row_key('activity', i))
-                        count = c.number_input(f'Cantidad {i+1}', min_value=0, max_value=100, value=row['count'], step=1, key=row_key('count', i))
-                        band = d.selectbox(f'Conexión del grupo {i+1}', BANDS, index=BANDS.index(row.get('band',BANDS[3])), key=row_key('band', i))
-                        st.button('Quitar este grupo', key=row_key('remove', i), on_click=remove_row, args=(i,))
-                        rows.append(dict(device=device, activity=activity, count=int(count), band=band))
-                st.session_state.rows=rows
-                if st.button('＋ Agregar otro equipo', key='add'):
-                    st.session_state.rows.append(dict(device=DEVICES[0], activity=ACTIVITIES[0], count=1, band=BANDS[3]))
-                    st.rerun()
+            st.caption('Agrupa los equipos que hacen lo mismo y usan la misma conexión.')
+            rows = []
+            for i,row in enumerate(st.session_state.rows):
+                with st.container(border=True):
+                    a,b,c,d = st.columns([3,4,2,3])
+                    device = a.selectbox(f'Equipo {i+1}', DEVICES, index=DEVICES.index(row['device']), key=row_key('device', i), on_change=choose_device, args=(i,))
+                    activity = b.selectbox(f'Actividad {i+1}', ACTIVITIES, index=ACTIVITIES.index(row['activity']), key=row_key('activity', i))
+                    count = c.number_input(f'Cantidad {i+1}', min_value=0, max_value=100, value=row['count'], step=1, key=row_key('count', i))
+                    band = d.selectbox(f'Conexión del grupo {i+1}', BANDS, index=BANDS.index(row.get('band',BANDS[3])), key=row_key('band', i))
+                    st.button('Quitar este grupo', key=row_key('remove', i), on_click=remove_row, args=(i,))
+                    rows.append(dict(device=device, activity=activity, count=int(count), band=band))
+            st.session_state.rows=rows
+            if st.button('＋ Agregar otro equipo', key='add'):
+                st.session_state.rows.append(dict(device=DEVICES[0], activity=ACTIVITIES[0], count=1, band=BANDS[3]))
+                st.rerun()
 
         default_band_caps = CLASSROOM_WIFI_CAPS if classroom_demo else DEFAULT_WIFI_CAPS
         wifi_key_prefix = f'classroom_{st.session_state.classroom_wifi_revision}_' if classroom_demo else ''
@@ -348,7 +344,7 @@ with st.container(key='presentation_frame'):
                             elif item['key'] == 'upload':
                                 if upload is None:
                                     st.write(f"Tus equipos necesitan **{summary['up']:g} Mbps de subida**.")
-                                    st.caption('En la segunda pantalla, marca «Conozco mi velocidad de subida» '
+                                    st.caption('En la primera pantalla, marca «Conozco mi velocidad de subida» '
                                                'e ingresa el valor, o usa el test de velocidad.')
                                 else:
                                     reference = 'del ejemplo' if classroom_demo else 'de referencia'
@@ -394,7 +390,7 @@ with st.container(key='presentation_frame'):
                              f"Eso equivale al **{data['usage']:.1f}%** de su capacidad.")
 
         with st.container(border=True, key='improvements'):
-            st.subheader('4 · Prueba una mejora')
+            st.subheader('Prueba una mejora')
             st.write('Elige una acción y compara el antes y el después. Puedes combinar varias. '
                      'Puedes comparar con el resultado original de arriba.')
 

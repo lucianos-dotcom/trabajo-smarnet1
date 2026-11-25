@@ -81,7 +81,6 @@ div.stButton > button { border-radius: 12px; min-height: 44px; }
 }
 
 @media (prefers-reduced-motion: no-preference) {
-    .st-key-presentation_frame .st-key-page_scenario,
     .st-key-presentation_frame .st-key-page_connection,
     .st-key-presentation_frame .st-key-page_equipment,
     .st-key-presentation_frame .st-key-page_result {

@@ -6,7 +6,7 @@ Aplicación educativa para hogares en Chile: medición orientativa desde el nave
 
 Abre [SmartNet en Streamlit](https://trabajo-smarnet1-vcvluy6e6zhwpk7u5tnapy.streamlit.app/) en el navegador. La app pública requiere internet y se puede usar sin instalar Python. Si Streamlit muestra que la aplicación está en reposo, pulsa **Yes, get this app back up!** y espera a que cargue.
 
-Para la demostración, elige **Wi-Fi saturado · Plan simétrico 300/300 Mbps** o **Wi-Fi saturado · Plan asimétrico 300/10 Mbps** en la primera pregunta. Ambos cargan el mismo hogar y cambian solo la referencia de subida. Revisa las dos bandas y la subida en la pantalla final. Abre **Quiero ver los números** para mostrar los porcentajes. Usa **Siguiente** para avanzar por las preguntas hasta el resultado y las mejoras.
+Para la demostración, elige **Wi-Fi saturado · Plan simétrico 300/300 Mbps** o **Wi-Fi saturado · Plan asimétrico 300/10 Mbps** en la segunda pantalla. Ambos cargan el mismo hogar y cambian solo la referencia de subida. Revisa las dos bandas y la subida en la pantalla final. Abre **Quiero ver los números** para mostrar los porcentajes. Usa **Siguiente** para avanzar por las preguntas hasta el resultado y las mejoras.
 
 ## Windows
 
@@ -33,10 +33,9 @@ streamlit run app.py --server.headless true
 
 ## Flujo familiar
 
-1. **Escenario.** Elige un ejemplo o empieza desde cero.
-2. **Conexión.** Ingresa las velocidades del plan, usa el test o revisa los valores que cargó el ejemplo.
-3. **Equipos.** Revisa los grupos, sus actividades y sus bandas. Puedes editar las capacidades supuestas en **Ajustes de Wi-Fi**.
-4. **Resultado y mejoras.** Consulta la descarga, la subida y las bandas. Compara el antes y el después al pausar descargas, cambiar de 4K a HD o repartir equipos entre bandas. La propuesta conserva los equipos conectados por cable.
+1. **Conexión.** El test está abierto al entrar. Puedes usarlo, ingresar las velocidades de tu plan o seguir a un ejemplo con un plan predefinido.
+2. **Equipos.** Elige un ejemplo o empieza desde cero. Los equipos se muestran directamente. Puedes editar sus actividades, bandas y capacidades supuestas.
+3. **Resultado y mejoras.** Consulta descarga, subida y bandas. Compara el antes y el después al pausar descargas, cambiar de 4K a HD o repartir equipos entre bandas. La propuesta conserva los equipos conectados por cable.
 
 Incluye celulares, PC, TV, consolas, cámaras, tablets, TV Box, parlantes, ampolletas/enchufes, impresoras y aspiradoras robot. El tipo organiza la matriz; es la **actividad elegida** la que determina la demanda.
 

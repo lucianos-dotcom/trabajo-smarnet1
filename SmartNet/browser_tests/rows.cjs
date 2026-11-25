@@ -42,22 +42,21 @@ async function verify(page) {
   const remove = page.getByRole('button', { name: 'Quitar este grupo', exact: true });
   const add = page.getByRole('button', { name: '＋ Agregar otro equipo', exact: true });
   const scenarioEditor = '[class*="st-key-scenario_"]';
-  const step = n => page.getByText(`Pantalla ${n} de 4`, { exact: true });
+  const step = n => page.getByText(`Pantalla ${n} de 3`, { exact: true });
   const goTo = async target => {
-    const progress = page.getByText(/^Pantalla [1-4] de 4$/);
+    const progress = page.getByText(/^Pantalla [1-3] de 3$/);
     const label = await progress.innerText();
     let current = Number(label.match(/\d+/)[0]);
     while (current !== target) {
       const forward = current < target;
-      const button = forward ? (current === 3 ? 'Ver resultado →' : 'Siguiente →') : '← Atrás';
+      const button = forward ? (current === 2 ? 'Ver resultado →' : 'Siguiente →') : '← Atrás';
       await page.getByRole('button', { name: button, exact: true }).click();
       current += forward ? 1 : -1;
       await step(current).waitFor();
     }
   };
   const choose = async (label, option) => {
-    await goTo(label === 'Prueba un ejemplo o arma tu casa' ? 1 :
-      label === '¿Cuántos megas tiene tu plan?' ? 2 : 3);
+    await goTo(label === '¿Cuántos megas tiene tu plan?' ? 1 : 2);
     const previous = label === 'Prueba un ejemplo o arma tu casa'
       ? await page.locator(scenarioEditor).getAttribute('class')
       : null;
@@ -75,11 +74,7 @@ async function verify(page) {
     await number(label).press('Enter');
   };
   const checkRows = async expected => {
-    await goTo(3);
-    if (expected.length && !await number('Cantidad 1').isVisible()) {
-      const toggle = page.getByText('Ver o editar equipos', { exact: true });
-      if (await toggle.isVisible()) await toggle.click();
-    }
+    await goTo(2);
     await page.waitForFunction(count => document.querySelectorAll('[class*="st-key-remove_"] button').length === count, expected.length);
     for (const [i, [device, activity, count, band = unknown]] of expected.entries()) {
       const n = i + 1;
@@ -90,7 +85,7 @@ async function verify(page) {
     }
   };
   const metric = async (label, value) => {
-    await goTo(4);
+    await goTo(3);
     await page.getByTestId('stMetric').filter({ hasText: label }).getByText(value, { exact: true }).waitFor({ state: 'attached' });
   };
   const preset = 'Prueba un ejemplo o arma tu casa';
@@ -100,8 +95,6 @@ async function verify(page) {
   await page.goto(process.env.SMARTNET_URL || 'http://127.0.0.1:8501');
   await page.getByRole('heading', { name: 'SmartNet · ¿Alcanza tu internet para todos?' }).waitFor();
   await step(1).waitFor();
-  await goTo(3);
-  await page.getByText('Ver o editar equipos', { exact: true }).waitFor();
   assert.equal(await number('Cantidad 1').isVisible(), false);
   await checkRows(presets['Una tarde en casa']);
   const names = Object.keys(presets);
@@ -113,7 +106,7 @@ async function verify(page) {
   for (const [scenario, upload, usage] of [[symmetric, 300, '2.1%'], [asymmetric, 10, '64.0%']]) {
     await choose(preset, scenario);
     await checkRows(saturatedRows);
-    await goTo(4);
+    await goTo(3);
     const bandCard = page.locator('[class*="st-key-family_card_"]').filter({ hasText: 'Equipos en 2,4 GHz' });
     if (!await bandCard.isVisible()) {
       await page.getByText('Ver detalle del resultado', { exact: true }).click();
@@ -129,7 +122,7 @@ async function verify(page) {
   await choose(preset, afternoon);
   await checkRows(presets[afternoon]);
   await choose('¿Cuántos megas tiene tu plan?', '20 Mbps');
-  await goTo(4);
+  await goTo(3);
   await page.getByText('🔢 Quiero ver los números', { exact: true }).click();
   await metric('Descarga que necesitan los equipos', '10.5 Mbps');
   await metric('Uso estimado de descarga', '52.5%');
@@ -139,7 +132,7 @@ async function verify(page) {
 
   await choose(preset, cameras);
   await checkRows(presets[cameras]);
-  await goTo(2);
+  await goTo(1);
   await page.getByText('Conozco mi velocidad de subida (o la obtuve en el test)', { exact: true }).click();
   await setNumber('Subida de referencia (Mbps)', 5);
   const numbers = page.getByTestId('stExpander').filter({ hasText: 'Quiero ver los números' });
@@ -151,7 +144,7 @@ async function verify(page) {
     [...row, ['5 GHz', 'Cable de red', unknown, unknown][i]]);
   const improvement = page.locator('.st-key-improvements');
   const solution = improvement.getByRole('button', { name: 'Probar cambio de bandas', includeHidden: true });
-  await goTo(4);
+  await goTo(3);
   await solution.click();
   await improvement.getByText('Grupo 1 · 📷 Cámara de seguridad: 5 GHz → 2,4 GHz', { exact: true }).waitFor();
   await improvement.getByText('Grupo 3 · 📺 TV Box / decodificador: No sé la banda → 5 GHz', { exact: true }).waitFor();
