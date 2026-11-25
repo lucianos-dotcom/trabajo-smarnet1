@@ -53,6 +53,20 @@ class AppTests(unittest.TestCase):
         self.assertFalse(app.latex)
         self.assertFalse(app.exception)
 
+    def test_classroom_upload_example(self):
+        app = self.app()
+        app.selectbox(key='preset').select('Casa con Wi-Fi saturado').run()
+        app.checkbox(key='know_upload').check().run()
+        app.number_input(key='upload_capacity').set_value(5).run()
+        app.toggle(key='classroom_upload_example').set_value(True).run()
+        self.assertTrue(any('Subida del ejemplo: **10 Mbps** · uso estimado: **61.0%**'
+                            in item.value for item in app.markdown))
+        self.assertEqual(app.number_input(key='upload_capacity').value, 5)
+        app.toggle(key='classroom_upload_example').set_value(False).run()
+        self.assertTrue(any('Subida de referencia: **5 Mbps** · uso estimado: **122.0%**'
+                            in item.value for item in app.markdown))
+        self.assertFalse(app.exception)
+
     def test_import_speed_result(self):
         app=self.app()
         app.session_state['last_speed']=dict(download=42.0, upload=7.0, latency=20.0, jitter=2.0, id='sample', timestamp='2026-11-04T00:00:00Z')

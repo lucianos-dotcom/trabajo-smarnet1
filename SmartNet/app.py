@@ -118,12 +118,17 @@ upload = st.number_input('Subida de referencia (Mbps)', min_value=0.001, value=2
 st.subheader('2 · Arma tu escenario')
 st.selectbox('Prueba un ejemplo o arma tu casa', list(SCENARIOS), key='preset', on_change=load_preset)
 classroom_demo = st.session_state.preset == SATURATED_WIFI_PRESET
+demo_upload = False
 if classroom_demo:
     st.write('En la tarde, dos cámaras del patio suben video y alguien está en una videollamada lejos '
              'del router. Al mismo tiempo, se reproduce una serie en 4K y un notebook descarga un juego '
              'en una habitación separada por paredes.')
     st.caption('El ejemplo parte con 6 Mbps de capacidad Wi-Fi estimada en 2,4 GHz '
                'y 60 Mbps en 5 GHz. Son referencias editables en Ajustes de Wi-Fi.')
+    demo_upload = st.toggle('Simular con 10 Mbps de subida', key='classroom_upload_example')
+    if demo_upload:
+        upload = 10.0
+        st.caption('El resultado usa 10 Mbps como referencia de ejemplo para la presentación.')
 else:
     st.caption('Agrupa los equipos que hacen lo mismo y usan la misma conexión.')
 rows=[]
@@ -183,8 +188,9 @@ if active:
                         st.caption('En Conoce tu conexión, marca «Conozco mi velocidad de subida» '
                                    'e ingresa el valor, o usa el test de velocidad.')
                     else:
+                        reference = 'del ejemplo' if demo_upload else 'de referencia'
                         st.write(f"Necesitas **{summary['up']:g} Mbps** de los **{upload:g} Mbps** de subida "
-                                 f"de referencia (**{summary['up_usage']:.1f}%**).")
+                                 f"{reference} (**{summary['up_usage']:.1f}%**).")
                 if item['state'] in ('tight', 'over'):
                     st.caption(item['tip'])
     if incomplete_bands:
@@ -197,7 +203,8 @@ with st.expander('🔢 Quiero ver los números'):
     c.metric('Demanda / referencia', f"{summary['down_usage']:.1f}%")
     st.write(f"Subida que necesitan tus equipos: **{summary['up']:g} Mbps**.")
     if upload is not None:
-        st.write(f"Subida de referencia: **{upload:g} Mbps** · uso estimado: **{summary['up_usage']:.1f}%**.")
+        label = 'Subida del ejemplo' if demo_upload else 'Subida de referencia'
+        st.write(f"{label}: **{upload:g} Mbps** · uso estimado: **{summary['up_usage']:.1f}%**.")
     else:
         st.write('Subida de referencia: pendiente. Falta ese dato para saber si alcanza.')
     if model_wifi:
