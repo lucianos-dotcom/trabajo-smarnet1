@@ -21,7 +21,8 @@ SATURATED_WIFI_PRESET = 'Casa con Wi-Fi saturado'
 # Streamlit can retain the previous household module across a code update.
 SCENARIOS = {
     name: groups for name, groups in PRESETS.items()
-    if name not in ('Demostración de clase: ambas bandas saturadas', SATURATED_WIFI_PRESET)
+    if name not in ('Ejemplo de la asignatura', 'Demostración de clase: ambas bandas saturadas',
+                    SATURATED_WIFI_PRESET)
 }
 SCENARIOS[SATURATED_WIFI_PRESET] = [(4, 6, 2), (0, 2, 1), (2, 3, 1), (1, 5, 1)]
 CLASSROOM_WIFI_CAPS = dict(zip(BANDS[:2], (24.0, 120.0)))

@@ -5,8 +5,12 @@ class HouseholdTests(unittest.TestCase):
     def rows(self, name):
         return [dict(device=DEVICES[d], activity=ACTIVITIES[a], count=n) for d,a,n in PRESETS[name]]
 
+    def academic_example(self):
+        groups = [(0, 0, 2), (0, 2, 1), (1, 0, 1), (1, 2, 1), (2, 1, 2)]
+        return [dict(device=DEVICES[d], activity=ACTIVITIES[a], count=n) for d, a, n in groups]
+
     def test_example_preserved(self):
-        _, _, total, usage, _ = evaluate(self.rows('Ejemplo de la asignatura'),20)
+        _, _, total, usage, _ = evaluate(self.academic_example(),20)
         self.assertEqual((total,usage),(14.5,72.5))
 
     def test_interventions(self):
@@ -18,6 +22,6 @@ class HouseholdTests(unittest.TestCase):
         self.assertEqual(evaluate(improve(series,False,True),100)[2],20)
 
     def test_preventive_threshold(self):
-        rows=self.rows('Ejemplo de la asignatura')
+        rows=self.academic_example()
         self.assertEqual(evaluate(rows,18.125)[4],'Al límite')
         self.assertEqual(evaluate([],20)[2],0)

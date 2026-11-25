@@ -19,7 +19,6 @@ const presets = {
   ],
   'Todos viendo series': [[phone, hd, 2], [tv, 'Ver videos o series en 4K', 2]],
   'Descargas y clases online': [[pc, call, 2], [consoleDevice, 'Descargar juegos o archivos', 2], [tv, hd, 1]],
-  'Ejemplo de la asignatura': [[phone, chat, 2], [phone, call, 1], [pc, chat, 1], [pc, call, 1], [tv, hd, 2]],
   'Casa con cámaras y dispositivos inteligentes': [
     [camera, cloud, 4], ['💡 Ampolleta o enchufe inteligente', 'Dispositivo inteligente en espera', 5],
     ['📺 TV Box / decodificador', hd, 1], ['🔊 Parlante inteligente', 'Escuchar música', 1],
@@ -58,7 +57,7 @@ async function verify(page) {
     await page.getByTestId('stMetric').filter({ hasText: label }).getByText(value, { exact: true }).waitFor({ state: 'attached' });
   };
   const preset = 'Prueba un ejemplo o arma tu casa';
-  const academic = 'Ejemplo de la asignatura';
+  const afternoon = 'Una tarde en casa';
   const cameras = 'Casa con cámaras y dispositivos inteligentes';
 
   await page.goto(process.env.SMARTNET_URL || 'http://127.0.0.1:8501');
@@ -78,15 +77,15 @@ async function verify(page) {
       .getByText('🔴 No alcanza en este ejemplo', { exact: true }).waitFor();
   }
 
-  await choose(preset, academic);
-  await checkRows(presets[academic]);
+  await choose(preset, afternoon);
+  await checkRows(presets[afternoon]);
   await choose('¿Cuántos megas tiene tu plan?', '20 Mbps');
   await page.getByText('🔢 Quiero ver los números', { exact: true }).click();
-  await metric('Demanda de descarga', '14.5 Mbps');
-  await metric('Demanda / referencia', '72.5%');
+  await metric('Demanda de descarga', '10.5 Mbps');
+  await metric('Demanda / referencia', '52.5%');
   await choose('¿Cuántos megas tiene tu plan?', 'Ingresar otra velocidad');
   await setNumber('Descarga de referencia (Mbps)', 10);
-  await metric('Demanda / referencia', '145.0%');
+  await metric('Demanda / referencia', '105.0%');
 
   await choose(preset, cameras);
   await checkRows(presets[cameras]);
@@ -127,9 +126,9 @@ async function verify(page) {
   await checkRows([[phone, chat, 1]]);
   await remove.first().click();
   await checkRows([]);
-  await choose(preset, academic);
-  await checkRows(presets[academic]);
-  await metric('Demanda / referencia', '145.0%');
+  await choose(preset, afternoon);
+  await checkRows(presets[afternoon]);
+  await metric('Demanda / referencia', '105.0%');
   assert.equal(await page.getByTestId('stException').count(), 0);
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
 }
@@ -144,7 +143,7 @@ async function verify(page) {
     for (const viewport of [{ width: 1360, height: 1000 }, { width: 390, height: 844 }]) {
       const page = await browser.newPage({ viewport, isMobile: viewport.width === 390, hasTouch: viewport.width === 390 });
       await verify(page);
-      console.log(`Rows, camera upload, Wi-Fi and academic numbers passed at ${viewport.width} × ${viewport.height}`);
+      console.log(`Rows, camera upload, Wi-Fi and capacity numbers passed at ${viewport.width} × ${viewport.height}`);
       await page.close();
     }
   } finally {

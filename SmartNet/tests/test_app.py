@@ -6,15 +6,16 @@ class AppTests(unittest.TestCase):
     def app(self):
         return AppTest.from_file(str(Path(__file__).resolve().parents[1] / 'app.py')).run(timeout=30)
 
-    def test_academic_example_and_capacity(self):
+    def test_scenario_and_capacity(self):
         app = self.app()
         self.assertFalse(app.exception)
-        app.selectbox(key='preset').select('Ejemplo de la asignatura').run()
+        self.assertNotIn('Ejemplo de la asignatura', app.selectbox(key='preset').options)
+        app.selectbox(key='preset').select('Una tarde en casa').run()
         app.selectbox(key='plan').select('Ingresar otra velocidad').run()
-        self.assertEqual(app.metric[0].value, '14.5 Mbps')
-        self.assertEqual(app.metric[2].value, '72.5%')
+        self.assertEqual(app.metric[0].value, '10.5 Mbps')
+        self.assertEqual(app.metric[2].value, '52.5%')
         app.number_input(key='custom_capacity').set_value(10).run()
-        self.assertEqual(app.metric[2].value, '145.0%')
+        self.assertEqual(app.metric[2].value, '105.0%')
         self.assertTrue(any('No alcanza en este ejemplo' in m.value for m in app.markdown))
         self.assertFalse(app.exception)
 

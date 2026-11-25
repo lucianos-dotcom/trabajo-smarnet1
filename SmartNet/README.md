@@ -6,7 +6,7 @@ Aplicación educativa para hogares en Chile: medición orientativa desde el nave
 
 Abre [SmartNet en Streamlit](https://trabajo-smarnet1-vcvluy6e6zhwpk7u5tnapy.streamlit.app/) en el navegador. La app pública requiere internet y se puede usar sin instalar Python. Si Streamlit muestra que la aplicación está en reposo, pulsa **Yes, get this app back up!** y espera a que cargue.
 
-Para la demostración, selecciona **20 Mbps**, carga **Ejemplo de la asignatura** y abre **Prueba una mejora → Probar cambio de bandas**. El resultado aparece en el paso 3. Abre **Quiero ver los números** para ver la demanda estimada.
+Para la demostración, selecciona **Casa con Wi-Fi saturado** en el paso 2 y activa **Simular con 10 Mbps de subida**. Revisa las dos bandas y la referencia de subida en el paso 3. Abre **Quiero ver los números** para mostrar los porcentajes.
 
 ## Windows
 
@@ -79,7 +79,7 @@ A_2,4 y A_5 separan equipos por banda. Su demanda local aproximada es suma(A_ban
 
 Con consumos idénticos, S(n) = 100 n c / C. Diez equipos de 10 Mbps representan 125% de 80 Mbps y 33,3% de 300 Mbps.
 
-Para el ejemplo original, elige “Ejemplo de la asignatura”, descarga personalizada 20 Mbps y desmarca usar medición: D = 14,5 Mbps y 72,5%. `model.py` conserva el modelo original. Los resultados OMNeT++/INET siguen pendientes de recibir los archivos originales.
+El ejemplo original de 14,5 Mbps de demanda y 72,5% de uso con 20 Mbps se conserva en las pruebas del modelo.
 
 ## Validación
 
