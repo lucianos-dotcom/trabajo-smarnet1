@@ -6,7 +6,7 @@ Aplicación educativa para hogares en Chile: medición orientativa desde el nave
 
 Abre [SmartNet en Streamlit](https://trabajo-smarnet1-vcvluy6e6zhwpk7u5tnapy.streamlit.app/) en el navegador. La app pública requiere internet y se puede usar sin instalar Python. Si Streamlit muestra que la aplicación está en reposo, pulsa **Yes, get this app back up!** y espera a que cargue.
 
-Para la demostración, selecciona **Casa con Wi-Fi saturado** en el paso 2 y activa **Simular con 10 Mbps de subida**. Revisa las dos bandas y la referencia de subida en el paso 3. Abre **Quiero ver los números** para mostrar los porcentajes.
+Para la demostración, elige **Wi-Fi saturado · Plan simétrico 300/300 Mbps** o **Wi-Fi saturado · Plan asimétrico 300/10 Mbps** en el paso 2. Ambos cargan el mismo hogar y cambian solo la referencia de subida. Revisa las dos bandas y la subida en el paso 3. Abre **Quiero ver los números** para mostrar los porcentajes.
 
 ## Windows
 

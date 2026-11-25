@@ -17,14 +17,18 @@ div.stButton>button{border-radius:12px;min-height:44px}
 </style>''', unsafe_allow_html=True)
 st.session_state.setdefault('row_revision', 0)
 DEFAULT_WIFI_CAPS = dict(zip(BANDS[:2], (80.0, 300.0)))
-SATURATED_WIFI_PRESET = 'Casa con Wi-Fi saturado'
+CLASSROOM_UPLOADS = {
+    'Wi-Fi saturado · Plan simétrico 300/300 Mbps': 300.0,
+    'Wi-Fi saturado · Plan asimétrico 300/10 Mbps': 10.0,
+}
+CLASSROOM_GROUPS = [(4, 6, 2), (0, 2, 1), (5, 1, 3), (2, 3, 1), (1, 5, 1)]
 # Streamlit can retain the previous household module across a code update.
 SCENARIOS = {
     name: groups for name, groups in PRESETS.items()
     if name not in ('Ejemplo de la asignatura', 'Demostración de clase: ambas bandas saturadas',
-                    SATURATED_WIFI_PRESET)
+                    'Casa con Wi-Fi saturado')
 }
-SCENARIOS[SATURATED_WIFI_PRESET] = [(4, 6, 2), (0, 2, 1), (5, 1, 3), (2, 3, 1), (1, 5, 1)]
+SCENARIOS.update(dict.fromkeys(CLASSROOM_UPLOADS, CLASSROOM_GROUPS))
 CLASSROOM_WIFI_CAPS = dict(zip(BANDS[:2], (80.0, 140.0)))
 CLASSROOM_SIGNAL_OPTIONS = dict(zip(BANDS[:2], (2, 1)))
 
@@ -41,7 +45,7 @@ def load_preset():
     preset = st.session_state.preset
     groups = SCENARIOS[preset]
     bands = [BANDS[3]] * len(groups)
-    if preset == SATURATED_WIFI_PRESET:
+    if preset in CLASSROOM_UPLOADS:
         bands = [BANDS[0], BANDS[0], BANDS[0], BANDS[1], BANDS[1]]
         st.session_state.classroom_wifi_revision = st.session_state.row_revision + 1
     replace_rows([
@@ -81,55 +85,62 @@ st.title('SmartNet · ¿Alcanza tu internet para todos?')
 st.write('Elige una velocidad, arma un escenario y revisa si la conexión alcanza para todos.')
 
 st.subheader('1 · Conoce tu conexión')
-with st.expander('📶 Hacer un test de velocidad aquí'):
-    location = st.selectbox('¿Dónde estás haciendo la prueba?', ['Donde noto lentitud', 'Cerca del router', 'Con cable de red', 'Otro lugar'], key='test_location')
-    result = render_speed_test(location)
-    if valid_result(result):
-        if st.session_state.get('speed_id') != result['id']:
-            st.session_state.speed_id = result['id']
-            st.session_state.last_speed = result
-            history = st.session_state.get('speed_history', [])
-            history.append(dict(result, lugar=result.get('location', 'Sin etiqueta')))
-            st.session_state.speed_history = history[-5:]
-    if 'last_speed' in st.session_state:
-        result = st.session_state.last_speed
-        st.write(f"**Última prueba:** {result['download']:.1f} Mbps de descarga · {result['upload']:.1f} Mbps de subida · respuesta HTTP {result['latency']:.0f} ms.")
-        st.caption(f"Fecha UTC: {result['timestamp']}. Variación entre respuestas HTTP: {result['jitter']:.0f} ms. No es un ping ICMP ni mide pérdida de paquetes.")
-        if result['latency'] >= 150:
-            st.info('La respuesta HTTP fue alta en esta prueba. Puede influir en actividades interactivas; repite cerca del router o con cable. No permite atribuir el problema al Wi-Fi por sí sola.')
-        st.button('Usar esta medición en mi simulación', on_click=apply_measurement, key='apply_speed')
-        if len(st.session_state.speed_history) > 1:
-            st.dataframe(pd.DataFrame(st.session_state.speed_history)[['timestamp','lugar','download','upload','latency']].rename(columns={'download':'Descarga Mbps','upload':'Subida Mbps','latency':'Respuesta HTTP ms'}), hide_index=True)
-    st.caption('Mide la conexión de este navegador mediante Cloudflare y guarda el resultado durante la sesión.')
-
-plan = st.selectbox('¿Cuántos megas tiene tu plan?', ['No sé mi velocidad', 'Ingresar otra velocidad', '20 Mbps', '100 Mbps', '300 Mbps', '500 Mbps', '600 Mbps', '800 Mbps', '940 Mbps', '1000 Mbps'], index=4, key='plan')
-known = plan != 'No sé mi velocidad'
-if not known:
-    capacity = st.number_input('Velocidad hipotética para probar (Mbps)', min_value=0.1, value=100.0, key='trial_capacity')
-elif plan == 'Ingresar otra velocidad':
-    capacity = st.number_input('Descarga de referencia (Mbps)', min_value=0.1, value=20.0, key='custom_capacity')
-else:
-    capacity = float(plan.split()[0])
-use_test = st.checkbox('Usar una velocidad medida en vez de la del plan', key='use_test')
-if use_test:
-    capacity = st.number_input('Descarga medida (Mbps)', min_value=0.001, value=100.0, format='%.2f', key='measured')
+classroom_demo = st.session_state.preset in CLASSROOM_UPLOADS
+if classroom_demo:
+    # Keep the manual widget values while the demonstration hides those controls.
+    for key in ('test_location', 'plan', 'trial_capacity', 'custom_capacity', 'use_test',
+                'measured', 'know_upload', 'upload_capacity'):
+        if key in st.session_state:
+            st.session_state[key] = st.session_state[key]
+    capacity = 300.0
+    upload = CLASSROOM_UPLOADS[st.session_state.preset]
     known = True
-know_upload = st.checkbox('Conozco mi velocidad de subida (o la obtuve en el test)', key='know_upload')
-upload = st.number_input('Subida de referencia (Mbps)', min_value=0.001, value=20.0, format='%.2f', key='upload_capacity') if know_upload else None
+    st.write(f"Plan del ejemplo: **{capacity:g} Mbps de descarga** y **{upload:g} Mbps de subida**.")
+else:
+    with st.expander('📶 Hacer un test de velocidad aquí'):
+        location = st.selectbox('¿Dónde estás haciendo la prueba?', ['Donde noto lentitud', 'Cerca del router', 'Con cable de red', 'Otro lugar'], key='test_location')
+        result = render_speed_test(location)
+        if valid_result(result):
+            if st.session_state.get('speed_id') != result['id']:
+                st.session_state.speed_id = result['id']
+                st.session_state.last_speed = result
+                history = st.session_state.get('speed_history', [])
+                history.append(dict(result, lugar=result.get('location', 'Sin etiqueta')))
+                st.session_state.speed_history = history[-5:]
+        if 'last_speed' in st.session_state:
+            result = st.session_state.last_speed
+            st.write(f"**Última prueba:** {result['download']:.1f} Mbps de descarga · {result['upload']:.1f} Mbps de subida · respuesta HTTP {result['latency']:.0f} ms.")
+            st.caption(f"Fecha UTC: {result['timestamp']}. Variación entre respuestas HTTP: {result['jitter']:.0f} ms. No es un ping ICMP ni mide pérdida de paquetes.")
+            if result['latency'] >= 150:
+                st.info('La respuesta HTTP fue alta en esta prueba. Puede influir en actividades interactivas; repite cerca del router o con cable. No permite atribuir el problema al Wi-Fi por sí sola.')
+            st.button('Usar esta medición en mi simulación', on_click=apply_measurement, key='apply_speed')
+            if len(st.session_state.speed_history) > 1:
+                st.dataframe(pd.DataFrame(st.session_state.speed_history)[['timestamp','lugar','download','upload','latency']].rename(columns={'download':'Descarga Mbps','upload':'Subida Mbps','latency':'Respuesta HTTP ms'}), hide_index=True)
+        st.caption('Mide la conexión de este navegador mediante Cloudflare y guarda el resultado durante la sesión.')
+
+    plan = st.selectbox('¿Cuántos megas tiene tu plan?', ['No sé mi velocidad', 'Ingresar otra velocidad', '20 Mbps', '100 Mbps', '300 Mbps', '500 Mbps', '600 Mbps', '800 Mbps', '940 Mbps', '1000 Mbps'], index=4, key='plan')
+    known = plan != 'No sé mi velocidad'
+    if not known:
+        capacity = st.number_input('Velocidad hipotética para probar (Mbps)', min_value=0.1, value=100.0, key='trial_capacity')
+    elif plan == 'Ingresar otra velocidad':
+        capacity = st.number_input('Descarga de referencia (Mbps)', min_value=0.1, value=20.0, key='custom_capacity')
+    else:
+        capacity = float(plan.split()[0])
+    use_test = st.checkbox('Usar una velocidad medida en vez de la del plan', key='use_test')
+    if use_test:
+        capacity = st.number_input('Descarga medida (Mbps)', min_value=0.001, value=100.0, format='%.2f', key='measured')
+        known = True
+    know_upload = st.checkbox('Conozco mi velocidad de subida (o la obtuve en el test)', key='know_upload')
+    upload = st.number_input('Subida de referencia (Mbps)', min_value=0.001, value=20.0, format='%.2f', key='upload_capacity') if know_upload else None
+
 st.subheader('2 · Arma tu escenario')
 st.selectbox('Prueba un ejemplo o arma tu casa', list(SCENARIOS), key='preset', on_change=load_preset)
-classroom_demo = st.session_state.preset == SATURATED_WIFI_PRESET
-demo_upload = False
 if classroom_demo:
     st.write('En la tarde, dos cámaras del patio suben video, alguien está en una videollamada '
              'y tres tablets reproducen videos en HD lejos del router. En otra habitación, un Smart TV '
              'reproduce una serie en 4K y un notebook descarga un juego.')
     st.caption('El ejemplo parte con 20 Mbps de capacidad Wi-Fi en 2,4 GHz y 70 Mbps en 5 GHz. '
                'Son valores supuestos según la señal del escenario y se pueden editar en Ajustes de Wi-Fi.')
-    demo_upload = st.toggle('Simular con 10 Mbps de subida', key='classroom_upload_example')
-    if demo_upload:
-        upload = 10.0
-        st.caption('El resultado usa 10 Mbps como referencia de ejemplo para la presentación.')
 else:
     st.caption('Agrupa los equipos que hacen lo mismo y usan la misma conexión.')
 rows=[]
@@ -189,7 +200,7 @@ if active:
                         st.caption('En Conoce tu conexión, marca «Conozco mi velocidad de subida» '
                                    'e ingresa el valor, o usa el test de velocidad.')
                     else:
-                        reference = 'del ejemplo' if demo_upload else 'de referencia'
+                        reference = 'del ejemplo' if classroom_demo else 'de referencia'
                         st.write(f"Necesitas **{summary['up']:g} Mbps** de los **{upload:g} Mbps** de subida "
                                  f"{reference} (**{summary['up_usage']:.1f}%**).")
                 if item['state'] in ('tight', 'over'):
@@ -204,7 +215,7 @@ with st.expander('🔢 Quiero ver los números'):
     c.metric('Demanda / referencia', f"{summary['down_usage']:.1f}%")
     st.write(f"Subida que necesitan tus equipos: **{summary['up']:g} Mbps**.")
     if upload is not None:
-        label = 'Subida del ejemplo' if demo_upload else 'Subida de referencia'
+        label = 'Subida del ejemplo' if classroom_demo else 'Subida de referencia'
         st.write(f"{label}: **{upload:g} Mbps** · uso estimado: **{summary['up_usage']:.1f}%**.")
     else:
         st.write('Subida de referencia: pendiente. Falta ese dato para saber si alcanza.')

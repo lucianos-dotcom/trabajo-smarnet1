@@ -13,6 +13,13 @@ const hd = 'Ver videos o series en HD';
 const cloud = 'Cámara transmitiendo a la nube';
 const unknown = 'No sé la banda';
 
+const symmetric = 'Wi-Fi saturado · Plan simétrico 300/300 Mbps';
+const asymmetric = 'Wi-Fi saturado · Plan asimétrico 300/10 Mbps';
+const saturatedRows = [
+  [camera, cloud, 2, '2,4 GHz'], [phone, call, 1, '2,4 GHz'], ['📟 Tablet', hd, 3, '2,4 GHz'],
+  [tv, 'Ver videos o series en 4K', 1, '5 GHz'], [pc, 'Descargar juegos o archivos', 1, '5 GHz'],
+];
+
 const presets = {
   'Una tarde en casa': [
     [phone, chat, 2], [pc, call, 1], [tv, hd, 1], [consoleDevice, 'Jugar online', 1],
@@ -24,10 +31,8 @@ const presets = {
     ['📺 TV Box / decodificador', hd, 1], ['🔊 Parlante inteligente', 'Escuchar música', 1],
   ],
   'Empezar desde cero': [],
-  'Casa con Wi-Fi saturado': [
-    [camera, cloud, 2, '2,4 GHz'], [phone, call, 1, '2,4 GHz'], ['📟 Tablet', hd, 3, '2,4 GHz'],
-    [tv, 'Ver videos o series en 4K', 1, '5 GHz'], [pc, 'Descargar juegos o archivos', 1, '5 GHz'],
-  ],
+  [symmetric]: saturatedRows,
+  [asymmetric]: saturatedRows,
 };
 
 async function verify(page) {
@@ -70,12 +75,15 @@ async function verify(page) {
     await checkRows(presets[name]);
   }
 
-  const saturated = 'Casa con Wi-Fi saturado';
-  await choose(preset, saturated);
-  await checkRows(presets[saturated]);
-  for (const band of ['2,4 GHz', '5 GHz']) {
-    await page.locator('[class*="st-key-family_card_"]').filter({ hasText: 'Equipos en ' + band })
-      .getByText('🔴 No alcanza en este ejemplo', { exact: true }).waitFor();
+  for (const [scenario, upload, usage] of [[symmetric, 300, '2.1%'], [asymmetric, 10, '64.0%']]) {
+    await choose(preset, scenario);
+    await checkRows(saturatedRows);
+    for (const band of ['2,4 GHz', '5 GHz']) {
+      await page.locator('[class*="st-key-family_card_"]').filter({ hasText: 'Equipos en ' + band })
+        .getByText('🔴 No alcanza en este ejemplo', { exact: true }).waitFor();
+    }
+    await page.getByText(`Necesitas 6.4 Mbps de los ${upload} Mbps de subida del ejemplo (${usage}).`,
+      { exact: true }).waitFor();
   }
 
   await choose(preset, afternoon);

@@ -54,19 +54,22 @@ class AppTests(unittest.TestCase):
         self.assertFalse(app.latex)
         self.assertFalse(app.exception)
 
-    def test_classroom_upload_example(self):
+    def test_classroom_plans(self):
         app = self.app()
-        app.selectbox(key='preset').select('Casa con Wi-Fi saturado').run()
-        app.checkbox(key='know_upload').check().run()
-        app.number_input(key='upload_capacity').set_value(5).run()
-        app.toggle(key='classroom_upload_example').set_value(True).run()
-        self.assertTrue(any('Subida del ejemplo: **10 Mbps** · uso estimado: **64.0%**'
-                            in item.value for item in app.markdown))
-        self.assertEqual(app.number_input(key='upload_capacity').value, 5)
-        app.toggle(key='classroom_upload_example').set_value(False).run()
-        self.assertTrue(any('Subida de referencia: **5 Mbps** · uso estimado: **128.0%**'
-                            in item.value for item in app.markdown))
-        self.assertFalse(app.exception)
+        app.selectbox(key='plan').select('500 Mbps').run()
+        for plan, upload, usage in [
+            ('Wi-Fi saturado · Plan simétrico 300/300 Mbps', 300, '2.1%'),
+            ('Wi-Fi saturado · Plan asimétrico 300/10 Mbps', 10, '64.0%'),
+        ]:
+            app.selectbox(key='preset').select(plan).run()
+            self.assertEqual(app.metric[1].value, '300 Mbps')
+            text = [item.value for item in app.markdown]
+            self.assertIn(f'Subida del ejemplo: **{upload} Mbps** · uso estimado: **{usage}**.', text)
+            self.assertIn('Ocupación estimada en 2,4 GHz: **112.5%**.', text)
+            self.assertIn('Ocupación estimada en 5 GHz: **108.0%**.', text)
+            self.assertFalse(app.exception)
+        app.selectbox(key='preset').select('Una tarde en casa').run()
+        self.assertEqual(app.selectbox(key='plan').value, '500 Mbps')
 
     def test_import_speed_result(self):
         app=self.app()
