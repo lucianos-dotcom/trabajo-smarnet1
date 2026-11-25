@@ -38,7 +38,6 @@ def replace_rows(rows):
 
 def load_preset():
     st.session_state.show_band_proposal = False
-    st.session_state.edit_equipment = False
     preset = st.session_state.preset
     groups = SCENARIOS[preset]
     bands = [BANDS[3]] * len(groups)
