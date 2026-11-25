@@ -57,10 +57,7 @@ async function verify(page) {
   };
   const openManual = async () => {
     await goTo(1);
-    const toggle = page.getByText('Usar datos manuales', { exact: true });
-    if (!await toggle.isVisible()) {
-      await page.getByText('Usar datos de mi plan o ingresarlos a mano', { exact: true }).click();
-    }
+    const toggle = page.getByText('Usar datos de mi plan o ingresarlos a mano', { exact: true });
     if (!await box('¿Cuántos megas tiene tu plan?').isVisible()) await toggle.click();
   };
   const choose = async (label, option) => {

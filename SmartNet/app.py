@@ -265,25 +265,24 @@ with st.container(key='presentation_frame'):
         if classroom_demo:
             manual_keys += ('manual_reference',)
         else:
-            with st.expander('Usar datos de mi plan o ingresarlos a mano'):
-                manual_reference = st.toggle('Usar datos manuales', key='manual_reference')
-                if manual_reference:
-                    plan = st.selectbox('¿Cuántos megas tiene tu plan?', [
-                        'No sé mi velocidad', 'Ingresar otra velocidad', '20 Mbps', '100 Mbps', '300 Mbps',
-                        '500 Mbps', '600 Mbps', '800 Mbps', '940 Mbps', '1000 Mbps',
-                    ], index=4, key='plan')
-                    known = plan != 'No sé mi velocidad'
-                    if not known:
-                        capacity = st.number_input('Velocidad hipotética para probar (Mbps)', min_value=0.1,
-                                                   value=100.0, key='trial_capacity')
-                    elif plan == 'Ingresar otra velocidad':
-                        capacity = st.number_input('Descarga de referencia (Mbps)', min_value=0.1,
-                                                   value=20.0, key='custom_capacity')
-                    else:
-                        capacity = float(plan.split()[0])
-                    know_upload = st.checkbox('Conozco mi velocidad de subida', key='know_upload')
-                    upload = st.number_input('Subida de referencia (Mbps)', min_value=0.001, value=20.0,
-                                             format='%.2f', key='upload_capacity') if know_upload else None
+            manual_reference = st.toggle('Usar datos de mi plan o ingresarlos a mano', key='manual_reference')
+            if manual_reference:
+                plan = st.selectbox('¿Cuántos megas tiene tu plan?', [
+                    'No sé mi velocidad', 'Ingresar otra velocidad', '20 Mbps', '100 Mbps', '300 Mbps',
+                    '500 Mbps', '600 Mbps', '800 Mbps', '940 Mbps', '1000 Mbps',
+                ], index=4, key='plan')
+                known = plan != 'No sé mi velocidad'
+                if not known:
+                    capacity = st.number_input('Velocidad hipotética para probar (Mbps)', min_value=0.1,
+                                               value=100.0, key='trial_capacity')
+                elif plan == 'Ingresar otra velocidad':
+                    capacity = st.number_input('Descarga de referencia (Mbps)', min_value=0.1,
+                                               value=20.0, key='custom_capacity')
+                else:
+                    capacity = float(plan.split()[0])
+                know_upload = st.checkbox('Conozco mi velocidad de subida', key='know_upload')
+                upload = st.number_input('Subida de referencia (Mbps)', min_value=0.001, value=20.0,
+                                         format='%.2f', key='upload_capacity') if know_upload else None
 
         if not manual_reference:
             # Preserve entered values while the corresponding controls are hidden.
