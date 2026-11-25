@@ -107,15 +107,14 @@ async function verify(page) {
   await choose('Conexión del grupo 1', '5 GHz');
   const original = presets[cameras].map((row, i) =>
     [...row, ['5 GHz', 'Cable de red', unknown, unknown][i]]);
-  const improvement = page.getByTestId('stExpander').filter({ hasText: 'Prueba una mejora' });
+  const improvement = page.locator('.st-key-improvements');
   const solution = improvement.getByRole('button', { name: 'Probar cambio de bandas', includeHidden: true });
-  await page.getByText('Prueba una mejora', { exact: true }).click();
   await solution.click();
   await improvement.getByText('Grupo 1 · 📷 Cámara de seguridad: 5 GHz → 2,4 GHz', { exact: true }).waitFor();
   await improvement.getByText('Grupo 3 · 📺 TV Box / decodificador: No sé la banda → 5 GHz', { exact: true }).waitFor();
   assert.equal(await improvement.getByText(/^Grupo 2 /).count(), 0);
-  await improvement.getByText('2,4 GHz · Antes: faltan datos · Con la propuesta: 10.9%', { exact: true }).waitFor();
-  await improvement.getByText('5 GHz · Antes: faltan datos · Con la propuesta: 1.7%', { exact: true }).waitFor();
+  await improvement.getByText('Antes: faltan datos · Con la propuesta: 10.9%', { exact: true }).waitFor();
+  await improvement.getByText('Antes: faltan datos · Con la propuesta: 1.7%', { exact: true }).waitFor();
   await checkRows(original);
 
   await add.click();

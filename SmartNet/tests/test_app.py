@@ -74,6 +74,18 @@ class AppTests(unittest.TestCase):
         app.selectbox(key='preset').select('Una tarde en casa').run()
         self.assertEqual(app.selectbox(key='plan').value, '500 Mbps')
 
+    def test_classroom_combines_improvements(self):
+        app = self.app()
+        app.selectbox(key='preset').select('Wi-Fi saturado · Plan asimétrico 300/10 Mbps').run()
+        original = app.session_state['rows']
+        app.button(key='try_bands').click().run()
+        self.assertTrue(any('134.1%' in item.value for item in app.markdown))
+        self.assertTrue(app.warning)
+        app.checkbox(key='pause').check().run()
+        self.assertTrue(any('62.0%' in item.value for item in app.markdown))
+        self.assertTrue(any('las dos bandas tienen capacidad' in item.value for item in app.success))
+        self.assertEqual(app.session_state['rows'], original)
+
     def test_import_speed_result(self):
         app=self.app()
         app.session_state['last_speed']=dict(download=42.0, upload=7.0, latency=20.0, jitter=2.0, id='sample', timestamp='2026-11-04T00:00:00Z')

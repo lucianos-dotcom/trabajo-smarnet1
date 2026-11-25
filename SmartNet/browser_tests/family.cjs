@@ -14,7 +14,6 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     assert.equal(await page.getByText('⚪ Falta un dato',{exact:false}).isVisible(),true);
     await headline.scrollIntoViewIfNeeded();
     await page.screenshot({path:'/tmp/smartnet-family-results.png'});
-    await page.getByText('Prueba una mejora',{exact:true}).click();
     await page.getByText('Probar dejar las descargas para después',{exact:true}).click();
     await page.getByText('Todo queda igual: las ideas elegidas no afectan las actividades que agregaste.',{exact:true}).waitFor();
     assert.equal(await page.getByText(/Matrices, bandas y funciones|Matriz de/).count(),0);
