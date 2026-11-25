@@ -90,11 +90,11 @@ async function verify(page) {
   await checkRows(presets[afternoon]);
   await choose('¿Cuántos megas tiene tu plan?', '20 Mbps');
   await page.getByText('🔢 Quiero ver los números', { exact: true }).click();
-  await metric('Demanda de descarga', '10.5 Mbps');
-  await metric('Demanda / referencia', '52.5%');
+  await metric('Descarga que necesitan los equipos', '10.5 Mbps');
+  await metric('Uso estimado de descarga', '52.5%');
   await choose('¿Cuántos megas tiene tu plan?', 'Ingresar otra velocidad');
   await setNumber('Descarga de referencia (Mbps)', 10);
-  await metric('Demanda / referencia', '105.0%');
+  await metric('Uso estimado de descarga', '105.0%');
 
   await choose(preset, cameras);
   await checkRows(presets[cameras]);
@@ -138,7 +138,7 @@ async function verify(page) {
   await checkRows([]);
   await choose(preset, afternoon);
   await checkRows(presets[afternoon]);
-  await metric('Demanda / referencia', '105.0%');
+  await metric('Uso estimado de descarga', '105.0%');
   assert.equal(await page.getByTestId('stException').count(), 0);
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
 }

@@ -229,20 +229,33 @@ if active:
         st.caption('Asigna las bandas pendientes para completar la comparación Wi-Fi.')
 
 with st.expander('🔢 Quiero ver los números'):
+    st.caption('El 100% significa que se necesita toda la capacidad. Si el uso estimado supera el 100%, '
+               'las actividades juntas necesitan más capacidad de la que hay.')
+    st.markdown('#### Plan de internet')
     a, b, c = st.columns(3)
-    a.metric('Demanda de descarga', f"{summary['down']:g} Mbps")
-    b.metric('Descarga de referencia', f'{capacity:g} Mbps')
-    c.metric('Demanda / referencia', f"{summary['down_usage']:.1f}%")
-    st.write(f"Subida que necesitan tus equipos: **{summary['up']:g} Mbps**.")
+    a.metric('Descarga que necesitan los equipos', f"{summary['down']:g} Mbps")
+    b.metric('Velocidad de descarga de referencia', f'{capacity:g} Mbps')
+    c.metric('Uso estimado de descarga', f"{summary['down_usage']:.1f}%")
+    if known:
+        st.caption('Descarga es lo que llega de internet a tu casa, como una serie o un juego.')
+    else:
+        st.caption('La descarga de referencia es hipotética. Sirve para probar el escenario.')
+    st.write(f"**Subida.** Tus equipos necesitan enviar **{summary['up']:g} Mbps** a internet, "
+             "por ejemplo para videollamadas o cámaras.")
     if upload is not None:
         label = 'Subida del ejemplo' if classroom_demo else 'Subida de referencia'
         st.write(f"{label}: **{upload:g} Mbps** · uso estimado: **{summary['up_usage']:.1f}%**.")
     else:
         st.write('Subida de referencia: pendiente. Falta ese dato para saber si alcanza.')
     if model_wifi:
+        st.markdown('#### Wi-Fi de la casa')
+        st.caption('Cada banda comparte su capacidad entre los equipos que la usan. '
+                   'Aquí se suma lo que esos equipos envían y reciben por Wi-Fi.')
         for band in BANDS[:2]:
             data = summary['bands'][band]
-            st.write(f"Ocupación estimada en {band}: **{data['usage']:.1f}%**.")
+            st.write(f"**{band}.** Los equipos necesitan **{data['traffic']:g} Mbps** y la banda tiene "
+                     f"**{data['capacity']:g} Mbps** en la simulación. "
+                     f"Eso equivale al **{data['usage']:.1f}%** de su capacidad.")
 
 with st.expander('Prueba una mejora'):
     pause = st.checkbox('Probar dejar las descargas para después', key='pause')
