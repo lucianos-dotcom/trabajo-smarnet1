@@ -303,9 +303,9 @@ st.markdown(f'<style>{hidden_pages} {{display: none !important;}}</style>', unsa
 with st.container(border=True, key='presentation_nav'):
     st.progress((presentation_step + 1) / len(PRESENTATION_PAGES),
                 text=f'Pantalla {presentation_step + 1} de {len(PRESENTATION_PAGES)}')
-    if page_key != 'connection':
+    if page_key == 'result':
         st.markdown('**SmartNet**')
-    if page_key != 'result':
+    else:
         st.subheader(question)
     back, forward = st.columns(2)
     back.button('← Atrás', key='presentation_back', disabled=presentation_step == 0,

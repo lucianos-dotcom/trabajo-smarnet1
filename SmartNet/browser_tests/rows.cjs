@@ -51,7 +51,9 @@ async function verify(page) {
     while (current !== target) {
       const forward = current < target;
       const button = forward ? (current === 2 ? 'Ver resultado →' : 'Siguiente →') : '← Atrás';
-      await page.getByRole('button', { name: button, exact: true }).click();
+      await page.locator('.st-key-presentation_nav')
+        .locator('[data-testid="stElementContainer"][data-stale="false"]')
+        .getByRole('button', { name: button, exact: true }).click();
       current += forward ? 1 : -1;
       await step(current).waitFor();
     }
