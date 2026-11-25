@@ -111,3 +111,9 @@ div.stButton > button { border-radius: 12px; min-height: 44px; }
 }
 .st-key-final_explanation { border-left: 4px solid #0d9488; }
 .st-key-final_download, .st-key-bottom_nav { border-top: 3px solid #0d9488; }
+
+.smartnet-speed-bars { gap: 1rem; margin-block: .65rem; }
+.smartnet-speed-bars .smartnet-bar-track { height: .95rem; }
+.smartnet-speed-bars .smartnet-bar-fill.descarga { background: #1466a0; }
+.smartnet-speed-bars .smartnet-bar-fill.subida { background: #087f74; }
+.smartnet-speed-detail { font-size: .85rem; margin: .12rem 0 .36rem; }

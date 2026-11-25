@@ -74,6 +74,35 @@ def apply_measurement():
     st.session_state.use_test = True
     st.session_state.know_upload = True
 
+def show_speed_result(result):
+    download, upload = result['download'], result['upload']
+    scale = max(download, upload)
+    speeds = []
+    rows = []
+    for direction, value, detail in (
+        ('Descarga', download, 'Recibir datos, como al ver un video.'),
+        ('Subida', upload, 'Enviar datos, como al compartir un archivo.'),
+    ):
+        speed = (f'{value:.1f}' if value >= 0.1 else f'{value:.3g}').replace('.', ',')
+        speeds.append(f'{direction}: {speed} Mbps')
+        rows.append(
+            f'<div><div class="smartnet-bar-label"><strong>{direction}</strong>'
+            f'<strong>{speed} Mbps</strong></div><div class="smartnet-speed-detail">{detail}</div>'
+            f'<span class="smartnet-bar-track" aria-hidden="true"><span class="smartnet-bar-fill '
+            f'{direction.lower()}" style="width:{value / scale * 100:.2f}%"></span></span></div>'
+        )
+
+    st.markdown('##### Tu última medición')
+    st.markdown(
+        f'<div class="smartnet-bars smartnet-speed-bars" role="img" aria-label="{" · ".join(speeds)}">'
+        f'{"".join(rows)}</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption('Las barras usan la misma escala. Una barra más larga significa más datos por segundo.')
+    st.markdown(f"**Tiempo de respuesta: {result['latency']:.0f} ms**")
+    st.caption('Es la demora en recibir una respuesta del servidor de la prueba. Cuanto menor, más rápida la respuesta.')
+
+
 def show_usage_comparison(before, after):
     # Give each pair one scale and leave room beyond 100% to show overload.
     scale = max(100.0, before or 0, after or 0) * 1.06
@@ -222,14 +251,20 @@ with st.container(key='presentation_frame'):
                     st.session_state.speed_history = history[-5:]
             if 'last_speed' in st.session_state:
                 result = st.session_state.last_speed
-                st.write(f"**Última prueba:** {result['download']:.1f} Mbps de descarga · {result['upload']:.1f} Mbps de subida · respuesta HTTP {result['latency']:.0f} ms.")
-                st.caption(f"Fecha UTC: {result['timestamp']}. Variación entre respuestas HTTP: {result['jitter']:.0f} ms. No es un ping ICMP ni mide pérdida de paquetes.")
+                show_speed_result(result)
                 if result['latency'] >= 150:
                     st.info('La respuesta HTTP fue alta en esta prueba. Puede influir en actividades interactivas; repite cerca del router o con cable. No permite atribuir el problema al Wi-Fi por sí sola.')
                 if not classroom_demo:
                     st.button('Usar esta medición en mi simulación', on_click=apply_measurement, key='apply_speed')
-                if len(st.session_state.speed_history) > 1:
-                    st.dataframe(pd.DataFrame(st.session_state.speed_history)[['timestamp','lugar','download','upload','latency']].rename(columns={'download':'Descarga Mbps','upload':'Subida Mbps','latency':'Respuesta HTTP ms'}), hide_index=True)
+                with st.expander('Detalles de la medición'):
+                    st.caption(f"Fecha UTC: {result['timestamp']}. Variación entre respuestas HTTP: "
+                               f"{result['jitter']:.0f} ms. La prueba mide tiempos de respuesta HTTP.")
+                    if len(st.session_state.speed_history) > 1:
+                        st.dataframe(pd.DataFrame(st.session_state.speed_history)[
+                            ['timestamp', 'lugar', 'download', 'upload', 'latency']
+                        ].rename(columns={
+                            'download': 'Descarga Mbps', 'upload': 'Subida Mbps', 'latency': 'Respuesta HTTP ms',
+                        }), hide_index=True)
             st.caption('Mide la conexión de este navegador mediante Cloudflare y guarda el resultado durante la sesión.')
 
         if classroom_demo:
