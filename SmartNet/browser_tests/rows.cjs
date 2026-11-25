@@ -51,6 +51,9 @@ async function verify(page) {
   };
   const checkRows = async expected => {
     await page.waitForFunction(count => document.querySelectorAll('[class*="st-key-remove_"] button').length === count, expected.length);
+    if (expected.length && !await number('Cantidad 1').isVisible()) {
+      await page.getByText('Ver o editar equipos', { exact: true }).click();
+    }
     for (const [i, [device, activity, count, band = unknown]] of expected.entries()) {
       const n = i + 1;
       await box('Equipo ' + n).getByText(device, { exact: true }).waitFor();
@@ -68,6 +71,8 @@ async function verify(page) {
 
   await page.goto(process.env.SMARTNET_URL || 'http://127.0.0.1:8501');
   await page.getByRole('heading', { name: 'SmartNet · ¿Alcanza tu internet para todos?' }).waitFor();
+  await page.getByText('Ver o editar equipos', { exact: true }).waitFor();
+  assert.equal(await number('Cantidad 1').isVisible(), false);
   await checkRows(presets['Una tarde en casa']);
   const names = Object.keys(presets);
   for (const name of [...names.slice(1), ...names, names[0]]) {
@@ -78,6 +83,10 @@ async function verify(page) {
   for (const [scenario, upload, usage] of [[symmetric, 300, '2.1%'], [asymmetric, 10, '64.0%']]) {
     await choose(preset, scenario);
     await checkRows(saturatedRows);
+    const bandCard = page.locator('[class*="st-key-family_card_"]').filter({ hasText: 'Equipos en 2,4 GHz' });
+    if (!await bandCard.isVisible()) {
+      await page.getByText('Ver detalle del resultado', { exact: true }).click();
+    }
     for (const band of ['2,4 GHz', '5 GHz']) {
       await page.locator('[class*="st-key-family_card_"]').filter({ hasText: 'Equipos en ' + band })
         .getByText('🔴 No alcanza en este ejemplo', { exact: true }).waitFor();

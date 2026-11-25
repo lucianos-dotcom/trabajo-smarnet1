@@ -212,28 +212,30 @@ else:
 
 st.subheader('2 · Arma tu escenario')
 st.selectbox('Prueba un ejemplo o arma tu casa', list(SCENARIOS), key='preset', on_change=load_preset)
+custom_scenario = st.session_state.preset == 'Empezar desde cero'
 if classroom_demo:
-    st.write('En la tarde, dos cámaras del patio suben video, alguien está en una videollamada '
-             'y tres tablets reproducen videos en HD lejos del router. En otra habitación, un Smart TV '
-             'reproduce una serie en 4K y un notebook descarga un juego.')
-    st.caption('El ejemplo parte con 20 Mbps de capacidad Wi-Fi en 2,4 GHz y 70 Mbps en 5 GHz. '
-               'Son valores supuestos según la señal del escenario y se pueden editar en Ajustes de Wi-Fi.')
-else:
+    st.write('Dos cámaras, una videollamada y tres tablets comparten 2,4 GHz. '
+             'En 5 GHz, un televisor reproduce una serie en 4K mientras un notebook descarga un juego.')
+if not custom_scenario:
+    equipment = sum(row['count'] for row in current_rows())
+    st.caption(f'Equipos en este escenario: {equipment}.')
+equipment_panel = st.container() if custom_scenario else st.expander('Ver o editar equipos')
+with equipment_panel:
     st.caption('Agrupa los equipos que hacen lo mismo y usan la misma conexión.')
-rows=[]
-for i,row in enumerate(st.session_state.rows):
-    with st.container(border=True):
-        a,b,c,d = st.columns([3,4,2,3])
-        device = a.selectbox(f'Equipo {i+1}', DEVICES, index=DEVICES.index(row['device']), key=row_key('device', i), on_change=choose_device, args=(i,))
-        activity = b.selectbox(f'Actividad {i+1}', ACTIVITIES, index=ACTIVITIES.index(row['activity']), key=row_key('activity', i))
-        count = c.number_input(f'Cantidad {i+1}', min_value=0, max_value=100, value=row['count'], step=1, key=row_key('count', i))
-        band = d.selectbox(f'Conexión del grupo {i+1}', BANDS, index=BANDS.index(row.get('band',BANDS[3])), key=row_key('band', i))
-        st.button('Quitar este grupo', key=row_key('remove', i), on_click=remove_row, args=(i,))
-        rows.append(dict(device=device, activity=activity, count=int(count), band=band))
-st.session_state.rows=rows
-if st.button('＋ Agregar otro equipo', key='add'):
-    st.session_state.rows.append(dict(device=DEVICES[0], activity=ACTIVITIES[0], count=1, band=BANDS[3]))
-    st.rerun()
+    rows=[]
+    for i,row in enumerate(st.session_state.rows):
+        with st.container(border=True):
+            a,b,c,d = st.columns([3,4,2,3])
+            device = a.selectbox(f'Equipo {i+1}', DEVICES, index=DEVICES.index(row['device']), key=row_key('device', i), on_change=choose_device, args=(i,))
+            activity = b.selectbox(f'Actividad {i+1}', ACTIVITIES, index=ACTIVITIES.index(row['activity']), key=row_key('activity', i))
+            count = c.number_input(f'Cantidad {i+1}', min_value=0, max_value=100, value=row['count'], step=1, key=row_key('count', i))
+            band = d.selectbox(f'Conexión del grupo {i+1}', BANDS, index=BANDS.index(row.get('band',BANDS[3])), key=row_key('band', i))
+            st.button('Quitar este grupo', key=row_key('remove', i), on_click=remove_row, args=(i,))
+            rows.append(dict(device=device, activity=activity, count=int(count), band=band))
+    st.session_state.rows=rows
+    if st.button('＋ Agregar otro equipo', key='add'):
+        st.session_state.rows.append(dict(device=DEVICES[0], activity=ACTIVITIES[0], count=1, band=BANDS[3]))
+        st.rerun()
 
 default_band_caps = CLASSROOM_WIFI_CAPS if classroom_demo else DEFAULT_WIFI_CAPS
 wifi_key_prefix = f'classroom_{st.session_state.classroom_wifi_revision}_' if classroom_demo else ''
@@ -242,6 +244,8 @@ with st.expander('Ajustes de Wi-Fi'):
                              value=classroom_demo, key=f'{wifi_key_prefix}model_wifi')
     band_caps = {}
     if model_wifi:
+        if classroom_demo:
+            st.caption('El ejemplo parte con 20 Mbps en 2,4 GHz y 70 Mbps en 5 GHz según la señal supuesta.')
         st.caption('Estas referencias son editables. Los equipos que usan 5 GHz suelen rendir mejor cerca del router.')
         for col, (band, default) in zip(st.columns(2), default_band_caps.items()):
             with col:
@@ -268,42 +272,52 @@ with st.container(border=True, key='family_summary'):
     else:
         st.write(explanation)
 
+    if active:
+        result_labels = {'download': 'Descarga', 'upload': 'Subida'}
+        statuses = []
+        for item in items:
+            icon, label = STATES[item['state']]
+            part = result_labels.get(item['key'], item['key'])
+            statuses.append(f'{icon} **{part}** · {label}')
+        st.caption('  |  '.join(statuses))
+
 if active:
-    for index, item in enumerate(items):
-        if index == 0:
-            st.markdown('#### Plan de internet · De internet al router y viceversa')
-            cols = st.columns(2)
-        elif index == 2:
-            st.markdown('#### Wi-Fi de la casa · Entre el router y los equipos')
-            st.write('El router reparte los datos por 2,4 GHz y 5 GHz. Los equipos que usan la misma banda '
-                     'comparten su capacidad para enviar y recibir datos.')
-            cols = st.columns(2)
-        icon, label = STATES[item['state']]
-        with cols[index % 2]:
-            with st.container(border=True, key=f"family_card_{index}_{item['state']}"):
-                st.markdown(f"#### {item['title']}")
-                st.markdown(f'**{icon} {label}**')
-                if item['key'] == 'download' and known:
-                    st.write(f"Los equipos necesitan recibir **{summary['down']:g} Mbps**. "
-                             f"La referencia de descarga es **{capacity:g} Mbps**.")
-                elif item['key'] == 'upload':
-                    if upload is None:
-                        st.write(f"Tus equipos necesitan **{summary['up']:g} Mbps de subida**.")
-                        st.caption('En Conoce tu conexión, marca «Conozco mi velocidad de subida» '
-                                   'e ingresa el valor, o usa el test de velocidad.')
-                    else:
-                        reference = 'del ejemplo' if classroom_demo else 'de referencia'
-                        st.write(f"Necesitas **{summary['up']:g} Mbps** de los **{upload:g} Mbps** de subida "
-                                 f"{reference} (**{summary['up_usage']:.1f}%**).")
-                elif item['key'] in BANDS[:2]:
-                    band = summary['bands'][item['key']]
-                    st.write(f"Los equipos de esta banda necesitan mover **{band['traffic']:g} Mbps** "
-                             f"entre lo que envían y reciben. Con la señal del ejemplo, "
-                             f"esta banda puede mover **{band['capacity']:g} Mbps**.")
-                if item['state'] in ('tight', 'over'):
-                    st.caption(item['tip'])
-    if incomplete_bands:
-        st.caption('Asigna las bandas pendientes para completar la comparación Wi-Fi.')
+    with st.expander('Ver detalle del resultado'):
+        for index, item in enumerate(items):
+            if index == 0:
+                st.markdown('#### Plan de internet · De internet al router y viceversa')
+                cols = st.columns(2)
+            elif index == 2:
+                st.markdown('#### Wi-Fi de la casa · Entre el router y los equipos')
+                st.write('El router reparte los datos por 2,4 GHz y 5 GHz. Los equipos que usan la misma banda '
+                         'comparten su capacidad para enviar y recibir datos.')
+                cols = st.columns(2)
+            icon, label = STATES[item['state']]
+            with cols[index % 2]:
+                with st.container(border=True, key=f"family_card_{index}_{item['state']}"):
+                    st.markdown(f"#### {item['title']}")
+                    st.markdown(f'**{icon} {label}**')
+                    if item['key'] == 'download' and known:
+                        st.write(f"Los equipos necesitan recibir **{summary['down']:g} Mbps**. "
+                                 f"La referencia de descarga es **{capacity:g} Mbps**.")
+                    elif item['key'] == 'upload':
+                        if upload is None:
+                            st.write(f"Tus equipos necesitan **{summary['up']:g} Mbps de subida**.")
+                            st.caption('En Conoce tu conexión, marca «Conozco mi velocidad de subida» '
+                                       'e ingresa el valor, o usa el test de velocidad.')
+                        else:
+                            reference = 'del ejemplo' if classroom_demo else 'de referencia'
+                            st.write(f"Necesitas **{summary['up']:g} Mbps** de los **{upload:g} Mbps** de subida "
+                                     f"{reference} (**{summary['up_usage']:.1f}%**).")
+                    elif item['key'] in BANDS[:2]:
+                        band = summary['bands'][item['key']]
+                        st.write(f"Los equipos de esta banda necesitan mover **{band['traffic']:g} Mbps** "
+                                 f"entre lo que envían y reciben. Con la señal del ejemplo, "
+                                 f"esta banda puede mover **{band['capacity']:g} Mbps**.")
+                    if item['state'] in ('tight', 'over'):
+                        st.caption(item['tip'])
+        if incomplete_bands:
+            st.caption('Asigna las bandas pendientes para completar la comparación Wi-Fi.')
 
 with st.expander('🔢 Quiero ver los números'):
     st.caption('El 100% significa que se necesita toda la capacidad. Si el uso estimado supera el 100%, '
