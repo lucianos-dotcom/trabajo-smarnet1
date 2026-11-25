@@ -104,22 +104,59 @@ def usage_bar(value, scale):
     )
 
 
-def show_usage_comparison(before, after):
-    # Give each pair one scale and leave room beyond 100% to show overload.
-    scale = max(100.0, before or 0, after or 0) * 1.06
-    previous = 'faltan datos' if before is None else f'{before:.1f}%'
-    current = 'faltan datos' if after is None else f'{after:.1f}%'
+def show_change_chart(before, after, unit='%'):
+    capacity_chart = unit == '%'
+    scale = max(100.0 if capacity_chart else 1.0, before or 0, after or 0) * 1.06
     bars = []
-    for label, value, text in [('Antes', before, previous), ('Con la propuesta', after, current)]:
-        track = usage_bar(value, scale)
+    values = []
+    for label, value in (('Antes', before), ('Con la propuesta', after)):
+        text = 'faltan datos' if value is None else f'{value:.1f}{unit}'
+        values.append(text)
+        if capacity_chart:
+            track = usage_bar(value, scale)
+        else:
+            track = (
+                '<span class="smartnet-bar-track" aria-hidden="true">'
+                f'<span class="smartnet-bar-fill comparison-demand" style="width:{value / scale * 100:.2f}%"></span>'
+                '</span>'
+            )
+        reading = text.replace('.', ',')
         bars.append(
-            f'<div><div class="smartnet-bar-label"><span>{label}</span><strong>{text}</strong></div>{track}</div>'
+            f'<div class="smartnet-change-reading"><span>{label}</span>'
+            f'<strong>{reading}</strong>{track}</div>'
         )
+
+    previous, current = values
     st.markdown(
-        f'<div class="smartnet-bars" role="img" aria-label="Antes: {previous} · Con la propuesta: {current}">'
-        f'{"".join(bars)}</div>',
+        f'<div class="smartnet-change-chart" role="img" '
+        f'aria-label="Antes: {previous} · Con la propuesta: {current}">'
+        f'{bars[0]}<span class="smartnet-change-arrow" aria-hidden="true">→</span>{bars[1]}</div>',
         unsafe_allow_html=True,
     )
+
+
+def show_change_status(before, after, unit):
+    status = 'comparison-neutral'
+    if before is None:
+        label = 'Ya se puede estimar la carga' if after is not None else 'Faltan datos para comparar'
+    elif after is None:
+        label = 'Faltan datos para comparar'
+    elif unit != '%':
+        label = 'Baja la demanda estimada'
+        status = 'comparison-better'
+    elif after > 100:
+        label = 'Sigue saturada' if before > 100 else 'Se satura con este cambio'
+        status = 'comparison-worse'
+    elif before > 100:
+        label = 'Sale de la saturación'
+        status = 'comparison-better'
+    elif not isclose(before, after):
+        label = 'Gana espacio' if after < before else 'Recibe más carga'
+        status = 'comparison-better' if after < before else 'comparison-warning'
+    else:
+        label = 'Queda igual'
+
+    st.markdown(f'<span class="smartnet-change-tag {status}">{label}</span>', unsafe_allow_html=True)
 
 
 def comparison_values(initial, final, known, compare_wifi):
@@ -465,6 +502,64 @@ with st.container(key='presentation_frame'):
 
                 baseline = network_summary(rows, capacity, upload, preview_caps) if compare_wifi and not model_wifi else summary
                 improved = network_summary(proposed, capacity, upload, preview_caps if compare_wifi else {})
+                if [row for row in proposed if row['count']] == [row for row in rows if row['count']]:
+                    st.info('Todo queda igual: las ideas elegidas no afectan las actividades que agregaste.')
+                else:
+                    st.markdown('#### Así cambia la conexión')
+                    if not isclose(summary['down'], improved['down']):
+                        st.metric('Demanda de descarga con estos cambios', f"{improved['down']:g} Mbps",
+                                  delta=f"{improved['down'] - summary['down']:g} Mbps", delta_color='inverse')
+
+                    comparisons = comparison_values(baseline, improved, known, compare_wifi)
+                    if compare_wifi:
+                        before_bands, after_bands = wifi_usage(baseline), wifi_usage(improved)
+                        if not after_bands:
+                            st.caption('Completa las bandas de los equipos para saber si el Wi-Fi alcanzaría.')
+                        else:
+                            remaining = [band for band, usage in after_bands.items() if usage > 100]
+                            if before_bands and all(value is not None for value in before_bands.values()):
+                                before_count = sum(value > 100 for value in before_bands.values())
+                                if before_count or remaining:
+                                    st.markdown(
+                                        f'<div class="smartnet-band-impact" role="img" '
+                                        f'aria-label="Bandas saturadas: de {before_count} a {len(remaining)}">'
+                                        '<span>Bandas saturadas</span>'
+                                        f'<strong>{before_count} <span aria-hidden="true">→</span> {len(remaining)}</strong>'
+                                        '</div>', unsafe_allow_html=True,
+                                    )
+                            if remaining:
+                                st.warning(f"El Wi-Fi todavía se queda corto en {' y '.join(remaining)}.")
+                            else:
+                                st.success('Con estos cambios, las dos bandas tienen capacidad para las actividades elegidas.')
+
+                    st.caption('En los gráficos de porcentaje, la marca vertical indica el límite del 100%.')
+                    plan_changes = []
+                    for (title, before, after), direction in zip(comparisons[:2], ('down', 'up')):
+                        if before is None and after is None:
+                            if not isclose(baseline[direction], improved[direction]):
+                                plan_changes.append((title, baseline[direction], improved[direction], ' Mbps'))
+                        else:
+                            plan_changes.append((title, before, after, '%'))
+                    for section, group in (
+                        ('Plan de internet', plan_changes),
+                        ('Wi-Fi de la casa', [(title, before, after, '%') for title, before, after in comparisons[2:]]),
+                    ):
+                        relevant = [
+                            (title, before, after, unit) for title, before, after, unit in group
+                            if (unit == '%' and (after or 0) > 100)
+                            or (before is None) != (after is None)
+                            or (before is not None and after is not None and not isclose(before, after))
+                        ]
+                        if not relevant:
+                            continue
+                        st.markdown(f'##### {section}')
+                        for col, (title, before, after, unit) in zip(st.columns(len(relevant)), relevant):
+                            with col.container(border=True):
+                                st.markdown(f'**{title}**')
+                                show_change_chart(before, after, unit)
+                                show_change_status(before, after, unit)
+                    if compare_wifi:
+                        recommend_wifi_step(rows, improved, capacity, upload, preview_caps, pause, lower, band_proposal)
                 if band_proposal and changes:
                     with st.container(border=True, key='final_explanation'):
                         st.markdown('#### Qué pasaría al mover los equipos')
@@ -486,50 +581,6 @@ with st.container(key='presentation_frame'):
                         st.caption('Para comparar el efecto del cambio, asigna las bandas originales de tus equipos.')
                 elif band_proposal:
                     st.info('Los grupos activos ya están en las bandas sugeridas.')
-                if [row for row in proposed if row['count']] == [row for row in rows if row['count']]:
-                    st.info('Todo queda igual: las ideas elegidas no afectan las actividades que agregaste.')
-                else:
-                    st.markdown('#### Antes y después')
-                    st.caption('La marca vertical indica el 100%. Pasar esa marca significa que falta capacidad.')
-                    if not isclose(summary['down'], improved['down']):
-                        st.metric('Demanda de descarga con estos cambios', f"{improved['down']:g} Mbps",
-                                  delta=f"{improved['down'] - summary['down']:g} Mbps", delta_color='inverse')
-
-                    if compare_wifi:
-                        if improved['bands'][BANDS[3]]['matrix'].sum():
-                            st.caption('Completa las bandas de los equipos para saber si el Wi-Fi alcanzaría.')
-                        elif any(improved['bands'][band]['usage'] > 100 for band in BANDS[:2]):
-                            st.warning('El Wi-Fi todavía se queda corto en al menos una banda.')
-                        else:
-                            st.success('Con estos cambios, las dos bandas tienen capacidad para las actividades elegidas.')
-                        recommend_wifi_step(rows, improved, capacity, upload, preview_caps, pause, lower, band_proposal)
-
-                    comparisons = comparison_values(baseline, improved, known, compare_wifi)
-                    for section, group in (('Plan de internet', comparisons[:2]),
-                                           ('Wi-Fi de la casa', comparisons[2:])):
-                        relevant = [
-                            (title, before, after) for title, before, after in group
-                            if (after or 0) > 100
-                            or (before is None) != (after is None)
-                            or (before is not None and after is not None and not isclose(before, after))
-                        ]
-                        if not relevant:
-                            continue
-                        st.markdown(f'##### {section}')
-                        for col, (title, before_usage, after_usage) in zip(st.columns(len(relevant)), relevant):
-                            with col.container(border=True):
-                                st.markdown(f'**{title}**')
-                                show_usage_comparison(before_usage, after_usage)
-                                if after_usage is not None:
-                                    icon, label = STATES[state(after_usage)]
-                                    st.markdown(f'**{icon} {label}**')
-                                if before_usage is not None and after_usage is not None:
-                                    if isclose(before_usage, after_usage):
-                                        st.caption('La carga queda igual.')
-                                    elif after_usage < before_usage:
-                                        st.caption('La carga baja.')
-                                    else:
-                                        st.caption('La carga sube.')
 
         with st.expander('Detalle y números'):
             st.caption('Por encima del 100%, las actividades juntas necesitan más capacidad de la disponible.')

@@ -120,3 +120,41 @@ div.stButton > button { border-radius: 12px; min-height: 44px; }
 .smartnet-initial-reading strong { font-size: 1.38rem; }
 .smartnet-initial-reading .smartnet-bar-track { margin-block: .3rem .55rem; }
 .st-key-initial_results [data-testid="stVerticalBlockBorderWrapper"] { border-color: #0d9488; }
+
+.smartnet-change-chart {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: .55rem;
+    margin-block: .5rem .8rem;
+}
+.smartnet-change-reading { display: grid; gap: .2rem; }
+.smartnet-change-reading > span:first-child { font-size: .85rem; line-height: 1.2; }
+.smartnet-change-reading strong { font-size: clamp(.96rem, 3vw, 1.35rem); }
+.smartnet-change-reading .smartnet-bar-track { margin-top: .28rem; }
+.smartnet-change-arrow { font-size: 1.25rem; color: #258a80; }
+.smartnet-bar-fill.comparison-demand { background: #1466a0; }
+.smartnet-change-tag {
+    display: inline-block;
+    border-radius: 999px;
+    padding: .22rem .6rem;
+    font-size: .84rem;
+    font-weight: 650;
+}
+.smartnet-change-tag.comparison-better { color: #12554d; background: #d8f3ea; }
+.smartnet-change-tag.comparison-worse { color: #791c32; background: #fbe1e7; }
+.smartnet-change-tag.comparison-warning { color: #713a00; background: #fff0cc; }
+.smartnet-change-tag.comparison-neutral { color: #294155; background: #e6edf4; }
+.smartnet-band-impact {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .4rem 1rem;
+    padding: .6rem .9rem;
+    border-left: 4px solid #0d9488;
+    border-radius: 9px;
+    color: #123248;
+    background: #d9efed;
+}
+.smartnet-band-impact strong { font-size: 1.28rem; }
