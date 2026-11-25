@@ -50,10 +50,16 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await firstCount.press('Enter');
     await slides.getByText('Equipos en este escenario: 9.',{exact:true}).waitFor();
     await slides.getByRole('button',{name:'Siguiente · Ver resultado →',exact:true}).click();
-    await stage('Resultado de la simulación').waitFor();
+    await stage('Resultado de la prueba').waitFor();
     await slides.getByText('9 equipos · 300 Mbps de descarga · 10 Mbps de subida',{exact:true}).waitFor();
     assert.equal(await firstCount.isVisible(),false);
     await stage('Prueba una mejora').waitFor();
+    const overview=slides.locator('.st-key-initial_results');
+    const chart=overview.getByRole('img',{name:'5 GHz: 108,0%',exact:true});
+    await chart.waitFor();
+    assert((await chart.boundingBox()).y < (await stage('Prueba una mejora').boundingBox()).y);
+    assert((await stage('Prueba una mejora').boundingBox()).y <
+      (await slides.getByText('Detalle y números',{exact:true}).boundingBox()).y);
     await slides.getByText('Probar dejar las descargas para después',{exact:true}).click();
     await slides.getByRole('img',{name:'Antes: 108.0% · Con la propuesta: 35.9%',exact:true}).waitFor();
     const downloadPromise=slides.waitForEvent('download');

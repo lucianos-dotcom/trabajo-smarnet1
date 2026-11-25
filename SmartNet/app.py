@@ -94,6 +94,16 @@ def show_speed_result(result):
     st.caption('Es la demora en recibir una respuesta del servidor de la prueba. Cuanto menor, más rápida la respuesta.')
 
 
+def usage_bar(value, scale):
+    if value is None:
+        return ''
+    return (
+        '<span class="smartnet-bar-track" aria-hidden="true">'
+        f'<span class="smartnet-bar-fill {state(value)}" style="width:{value / scale * 100:.2f}%"></span>'
+        f'<span class="smartnet-bar-limit" style="left:{100 / scale * 100:.2f}%"></span></span>'
+    )
+
+
 def show_usage_comparison(before, after):
     # Give each pair one scale and leave room beyond 100% to show overload.
     scale = max(100.0, before or 0, after or 0) * 1.06
@@ -101,13 +111,7 @@ def show_usage_comparison(before, after):
     current = 'faltan datos' if after is None else f'{after:.1f}%'
     bars = []
     for label, value, text in [('Antes', before, previous), ('Con la propuesta', after, current)]:
-        track = ''
-        if value is not None:
-            track = (
-                f'<span class="smartnet-bar-track" aria-hidden="true">'
-                f'<span class="smartnet-bar-fill {state(value)}" style="width:{value / scale * 100:.2f}%"></span>'
-                f'<span class="smartnet-bar-limit" style="left:{100 / scale * 100:.2f}%"></span></span>'
-            )
+        track = usage_bar(value, scale)
         bars.append(
             f'<div><div class="smartnet-bar-label"><span>{label}</span><strong>{text}</strong></div>{track}</div>'
         )
@@ -130,6 +134,31 @@ def comparison_values(initial, final, known, compare_wifi):
         after_usage = None if is_band and unknown_final else after['usage']
         result.append((title, before_usage, after_usage))
     return result
+
+
+def show_initial_results(summary, known, model_wifi):
+    values = comparison_values(summary, summary, known, model_wifi)
+    scale = max(100.0, *(value or 0 for _, value, _ in values)) * 1.06
+    st.markdown('#### Uso estimado de la conexión')
+    st.caption('La línea marca el 100%. Si una barra la pasa, falta capacidad para esas actividades.')
+    for section, group in (('Plan de internet', values[:2]), ('Wi-Fi de la casa', values[2:])):
+        if not group:
+            continue
+        st.markdown(f'##### {section}')
+        for col, (title, value, _) in zip(st.columns(2), group):
+            with col.container(border=True):
+                icon, message = STATES[state(value)]
+                st.markdown(f'**{title}**')
+                if value is None:
+                    st.caption(f'{icon} {message}')
+                else:
+                    reading = f'{value:.1f}%'.replace('.', ',')
+                    st.markdown(
+                        f'<div class="smartnet-initial-reading" role="img" aria-label="{title}: {reading}">'
+                        f'<strong>{reading}</strong>{usage_bar(value, scale)}</div>',
+                        unsafe_allow_html=True,
+                    )
+                    st.caption(f'{icon} {message}')
 
 
 def wifi_usage(report):
@@ -177,7 +206,7 @@ def recommend_wifi_step(rows, current, capacity, upload, caps, pause, lower, mov
         remaining = [band for band in BANDS[:2] if result[band] > 100]
         takeaway = (
             f" Aún faltaría capacidad en {' y '.join(remaining)}." if remaining
-            else ' Las dos bandas quedarían con capacidad para las actividades simuladas.'
+            else ' Las dos bandas quedarían con capacidad para las actividades elegidas.'
         )
         effects = ' y '.join(gains + increases)
         st.info(f"**Siguiente paso. {action}.** {effects}.{takeaway}")
@@ -296,14 +325,14 @@ with st.container(key='presentation_frame'):
                 capacity, upload, known = float(measured['download']), float(measured['upload']), True
                 reference_source = 'Medición del test de SmartNet'
                 with speed_overview:
-                    st.success('Esta medición se usa automáticamente en la simulación.')
+                    st.success('Esta medición se usa automáticamente en la prueba.')
             else:
                 capacity, upload, known = 300.0, None, False
                 reference_source = 'Descarga hipotética'
                 st.caption('Si sigues sin medir, usaremos 300 Mbps de descarga como ejemplo. La subida quedará pendiente.')
         else:
             reference_source = 'Datos ingresados a mano'
-            st.caption('Simulación con datos ingresados a mano.')
+            st.caption('Prueba con datos ingresados a mano.')
 
     with st.container(key='page_equipment'):
         st.selectbox('Prueba un ejemplo o arma tu casa', list(SCENARIOS), key='preset', on_change=load_preset)
@@ -353,7 +382,7 @@ with st.container(key='presentation_frame'):
         active = bool(summary['matrix'].sum())
         _, headline, explanation = verdict(items, active, incomplete_bands)
 
-        st.subheader('Resultado de la simulación')
+        st.subheader('Resultado de la prueba')
         pending_reference = active and all(item['state'] == 'unknown' for item in items)
         with st.container(border=True, key='family_summary'):
             with st.container(key='slide_context'):
@@ -383,6 +412,10 @@ with st.container(key='presentation_frame'):
                     st.caption('Necesitan atención: ' + ' · '.join(attention))
                 if incomplete_bands:
                     st.caption('Falta conocer la banda de algunos equipos para completar el resultado del Wi-Fi.')
+
+        if active:
+            with st.container(key='initial_results'):
+                show_initial_results(summary, known, model_wifi)
 
         baseline = improved = summary
         changes = []
@@ -468,7 +501,7 @@ with st.container(key='presentation_frame'):
                         elif any(improved['bands'][band]['usage'] > 100 for band in BANDS[:2]):
                             st.warning('El Wi-Fi todavía se queda corto en al menos una banda.')
                         else:
-                            st.success('Con estos cambios, las dos bandas tienen capacidad para las actividades simuladas.')
+                            st.success('Con estos cambios, las dos bandas tienen capacidad para las actividades elegidas.')
                         recommend_wifi_step(rows, improved, capacity, upload, preview_caps, pause, lower, band_proposal)
 
                     comparisons = comparison_values(baseline, improved, known, compare_wifi)
@@ -516,16 +549,16 @@ with st.container(key='presentation_frame'):
             if model_wifi:
                 st.markdown('#### Wi-Fi de la casa')
                 st.caption('Se suma lo que los equipos envían y reciben en cada banda. '
-                           'Las capacidades son supuestos de la simulación.')
+                           'Las capacidades de las bandas son valores de referencia.')
                 for band in BANDS[:2]:
                     data = summary['bands'][band]
                     st.write(f"**{band}.** Los equipos necesitan **{data['traffic']:g} Mbps** y la banda tiene "
-                             f"**{data['capacity']:g} Mbps** en la simulación. "
+                             f"**{data['capacity']:g} Mbps** en este ejemplo. "
                              f"Eso equivale al **{data['usage']:.1f}%** de su capacidad.")
 
         if page_key == 'result':
             with st.container(border=True, key='final_download'):
-                st.subheader('Guarda tu simulación')
+                st.subheader('Guarda tu prueba')
                 st.caption('Descarga una imagen con el escenario, las acciones probadas y el antes y después.')
                 actions = [
                     label for selected, label in (

@@ -44,9 +44,9 @@ def simulation_png(scenario, equipment, connection, actions, comparisons, change
     elif any(after is None for _, _, after in comparisons):
         conclusion = 'Faltan datos para comprobar toda la conexión.'
     elif len(comparisons) == 2:
-        conclusion = 'El plan tiene capacidad para las actividades simuladas.'
+        conclusion = 'El plan tiene capacidad para las actividades elegidas.'
     else:
-        conclusion = 'Hay capacidad para las actividades simuladas.'
+        conclusion = 'Hay capacidad para las actividades elegidas.'
     result_lines = fit_lines(conclusion, body, 908)
 
     scenario_lines = fit_lines(scenario, large, 948)
@@ -60,7 +60,7 @@ def simulation_png(scenario, equipment, connection, actions, comparisons, change
     draw = ImageDraw.Draw(image)
 
     draw.rectangle((0, 0, width, header_height), fill='#123248')
-    draw.text((46, 24), 'SMARTNET  /  RESUMEN DE LA SIMULACIÓN', font=small, fill='#a6e4df')
+    draw.text((46, 24), 'SMARTNET  /  RESUMEN DE LA PRUEBA', font=small, fill='#a6e4df')
     for index, line in enumerate(scenario_lines):
         draw.text((46, 62 + index * 38), line, font=large, fill='white')
 
@@ -109,7 +109,7 @@ def simulation_png(scenario, equipment, connection, actions, comparisons, change
         for line in change_lines:
             draw.text((46, y), line, font=small, fill='#244b58')
             y += 26
-    draw.text((46, y + 7), 'Marca vertical: 100% de capacidad. Las cifras corresponden a una simulación.',
+    draw.text((46, y + 7), 'Marca vertical: 100% de capacidad. Los porcentajes indican el uso estimado.',
               font=small, fill='#244b58')
 
     output = BytesIO()

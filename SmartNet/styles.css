@@ -116,3 +116,7 @@ div.stButton > button { border-radius: 12px; min-height: 44px; }
     padding: .12rem .45rem;
     border-color: transparent;
 }
+
+.smartnet-initial-reading strong { font-size: 1.38rem; }
+.smartnet-initial-reading .smartnet-bar-track { margin-block: .3rem .55rem; }
+.st-key-initial_results [data-testid="stVerticalBlockBorderWrapper"] { border-color: #0d9488; }
