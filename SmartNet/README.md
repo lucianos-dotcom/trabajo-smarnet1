@@ -73,7 +73,7 @@ Son supuestos didácticos, no estándares universales ni mediciones. Descargas r
 
 D = suma(A · b_descarga), T = suma(A · b_subida). U_descarga = 100D/B_descarga, U_subida = 100T/B_subida. Sin capacidad de subida conocida no se calcula su porcentaje, aunque la descarga esté verde.
 
-A_2,4 y A_5 separan equipos por banda. Su demanda local aproximada es suma(A_banda · (b_descarga + b_subida)), comparada con una capacidad compartida **hipotética**. Las referencias iniciales 80 y 300 Mbps no son velocidades universales. Los factores 100%, 50% y 25% representan escenarios educativos de señal y se aplican al grupo completo de cada banda. No hay medición de RSSI, ocupación del canal, retransmisiones ni ancho de canal. Las capacidades son independientes de la referencia de internet: ambas bandas y los equipos por cable comparten ese cuello de botella de internet.
+A_2,4 y A_5 separan equipos por banda. Su demanda local aproximada es suma(A_banda · (b_descarga + b_subida)), comparada con una capacidad compartida **hipotética**. Los escenarios generales usan referencias de 80 y 300 Mbps. Los dos ejemplos de Wi-Fi saturado usan 20 y 70 Mbps para representar una señal limitada. No hay medición de RSSI, ocupación del canal, retransmisiones ni ancho de canal. Las capacidades son independientes de la referencia de internet: ambas bandas y los equipos por cable comparten ese cuello de botella de internet.
 
 “No sé la banda” se incluye en internet pero no se asigna arbitrariamente a una banda; se advierte que la comparación está incompleta. Cable no consume el Wi-Fi supuesto. Mover dispositivos entre bandas conserva demanda total. 5 GHz suele ofrecer más capacidad cerca del router, pero puede rendir peor con distancia/paredes. Ninguna banda garantiza mejor rendimiento.
 
@@ -101,7 +101,7 @@ Variables opcionales: `PLAYWRIGHT_MODULE` (ruta al módulo), `CHROMIUM_PATH` (ej
 
 ## Resultados para toda la familia
 
-La vista principal muestra un resumen de la casa y tarjetas: recibir datos (series/navegación), enviar datos (cámaras/llamadas) y, si se activa, cada banda. Usa colores e indicaciones escritas: hay espacio, está justito, no alcanza en el ejemplo o falta un dato. No presenta un estado global verde si faltan subida o bandas necesarias; un problema conocido se muestra aunque falten otros datos.
+La pantalla final destaca el diagnóstico y las partes que necesitan atención. La comparación de bandas aparece cuando hay grupos activos en 2,4 o 5 GHz. Al probar una mejora se muestran los gráficos de los valores que cambian o siguen saturados.
 
 Los indicadores de demanda están en **Detalle y números**. Las matrices y fórmulas se documentan aquí para preparar la presentación.
 
