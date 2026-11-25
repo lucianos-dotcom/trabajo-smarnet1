@@ -24,6 +24,9 @@ const presets = {
     [camera, cloud, 4], ['💡 Ampolleta o enchufe inteligente', 'Dispositivo inteligente en espera', 5],
     ['📺 TV Box / decodificador', hd, 1], ['🔊 Parlante inteligente', 'Escuchar música', 1],
   ],
+  'Demostración de clase: ambas bandas saturadas': [
+    [tv, 'Ver videos o series en 4K', 1, '2,4 GHz'], [pc, 'Descargar juegos o archivos', 1, '5 GHz'],
+  ],
   'Empezar desde cero': [],
 };
 
@@ -64,6 +67,14 @@ async function verify(page) {
   for (const name of [...names.slice(1), ...names, names[0]]) {
     await choose(preset, name);
     await checkRows(presets[name]);
+  }
+
+  const saturated = 'Demostración de clase: ambas bandas saturadas';
+  await choose(preset, saturated);
+  await checkRows(presets[saturated]);
+  for (const band of ['2,4 GHz', '5 GHz']) {
+    await page.locator('[class*="st-key-family_card_"]').filter({ hasText: 'Equipos en ' + band })
+      .getByText('🔴 No alcanza en este ejemplo', { exact: true }).waitFor();
   }
 
   await choose(preset, academic);

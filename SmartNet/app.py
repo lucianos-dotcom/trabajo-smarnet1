@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 from household import (ACTIVITIES, DEVICES, RATES, UPLOAD_RATES, PRESETS, BANDS,
-                       SIGNALS, network_summary, improve, suggest_bands)
+                       SIGNALS, SATURATED_WIFI_PRESET, network_summary, improve, suggest_bands)
 from speed_test import render_speed_test, valid_result
 from results import STATES, checks, verdict
 
@@ -17,6 +17,7 @@ div.stButton>button{border-radius:12px;min-height:44px}
 </style>''', unsafe_allow_html=True)
 st.session_state.setdefault('row_revision', 0)
 DEFAULT_WIFI_CAPS = dict(zip(BANDS[:2], (80.0, 300.0)))
+CLASSROOM_WIFI_CAPS = dict(zip(BANDS[:2], (20.0, 40.0)))
 
 def row_key(field, i):
     return f'{field}_{st.session_state.row_revision}_{i}'
@@ -28,9 +29,15 @@ def replace_rows(rows):
 
 def load_preset():
     st.session_state.show_band_proposal = False
+    preset = st.session_state.preset
+    groups = PRESETS[preset]
+    bands = [BANDS[3]] * len(groups)
+    if preset == SATURATED_WIFI_PRESET:
+        bands = BANDS[:2]
+        st.session_state.classroom_wifi_revision = st.session_state.row_revision + 1
     replace_rows([
-        dict(device=DEVICES[d], activity=ACTIVITIES[a], count=n, band=BANDS[3])
-        for d, a, n in PRESETS[st.session_state.preset]
+        dict(device=DEVICES[d], activity=ACTIVITIES[a], count=n, band=band)
+        for (d, a, n), band in zip(groups, bands, strict=True)
     ])
 
 def choose_device(i):
@@ -102,7 +109,12 @@ know_upload = st.checkbox('Conozco mi velocidad de subida (o la obtuve en el tes
 upload = st.number_input('Subida de referencia (Mbps)', min_value=0.001, value=20.0, format='%.2f', key='upload_capacity') if know_upload else None
 st.subheader('2 · Arma tu escenario')
 st.selectbox('Prueba un ejemplo o arma tu casa', list(PRESETS), key='preset', on_change=load_preset)
-st.caption('Agrupa los equipos que hacen lo mismo y usan la misma conexión.')
+classroom_demo = st.session_state.preset == SATURATED_WIFI_PRESET
+if classroom_demo:
+    st.caption('La demostración carga referencias Wi-Fi de 20 Mbps en 2,4 GHz y 40 Mbps en 5 GHz. '
+               'Puedes editarlas en Ajustes de Wi-Fi.')
+else:
+    st.caption('Agrupa los equipos que hacen lo mismo y usan la misma conexión.')
 rows=[]
 for i,row in enumerate(st.session_state.rows):
     with st.container(border=True):
@@ -118,16 +130,19 @@ if st.button('＋ Agregar otro equipo', key='add'):
     st.session_state.rows.append(dict(device=DEVICES[0], activity=ACTIVITIES[0], count=1, band=BANDS[3]))
     st.rerun()
 
+default_band_caps = CLASSROOM_WIFI_CAPS if classroom_demo else DEFAULT_WIFI_CAPS
+wifi_key_prefix = f'classroom_{st.session_state.classroom_wifi_revision}_' if classroom_demo else ''
 with st.expander('Ajustes de Wi-Fi'):
-    model_wifi = st.checkbox('Comparar las dos bandas con capacidades supuestas', key='model_wifi')
+    model_wifi = st.checkbox('Comparar las dos bandas con capacidades supuestas',
+                             value=classroom_demo, key=f'{wifi_key_prefix}model_wifi')
     band_caps = {}
     if model_wifi:
         st.caption('Estas referencias son editables. Los equipos que usan 5 GHz suelen rendir mejor cerca del router.')
-        for col, (band, default) in zip(st.columns(2), DEFAULT_WIFI_CAPS.items()):
+        for col, (band, default) in zip(st.columns(2), default_band_caps.items()):
             with col:
                 nominal = st.number_input(f'Capacidad supuesta {band} (Mbps)', min_value=0.1,
-                                          value=default, key=f'wifi_capacity_{band}')
-                signal = st.selectbox(f'Escenario de señal {band}', list(SIGNALS), key=f'signal_{band}')
+                                          value=default, key=f'{wifi_key_prefix}wifi_capacity_{band}')
+                signal = st.selectbox(f'Escenario de señal {band}', list(SIGNALS), key=f'{wifi_key_prefix}signal_{band}')
                 band_caps[band] = nominal * SIGNALS[signal]
 
 summary = network_summary(rows, capacity, upload, band_caps)
@@ -194,7 +209,7 @@ with st.expander('Prueba una mejora'):
                 st.write(change)
         else:
             st.write('Los grupos activos ya están en las bandas sugeridas.')
-        preview_caps = band_caps or DEFAULT_WIFI_CAPS
+        preview_caps = band_caps or default_band_caps
         before = summary if model_wifi else network_summary(rows, capacity, upload, preview_caps)
         after = network_summary(proposed, capacity, upload, preview_caps)
         unknown_bands = before['bands'][BANDS[3]]['matrix'].sum() > 0

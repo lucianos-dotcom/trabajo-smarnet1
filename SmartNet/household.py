@@ -5,12 +5,14 @@ from model import calculate
 DEVICES = ['📱 Celular', '💻 Notebook o PC', '📺 Smart TV', '🎮 Consola', '📷 Cámara de seguridad', '📟 Tablet', '📺 TV Box / decodificador', '🔊 Parlante inteligente', '💡 Ampolleta o enchufe inteligente', '🖨️ Impresora Wi-Fi', '🤖 Aspiradora robot']
 ACTIVITIES = ['WhatsApp y navegar', 'Ver videos o series en HD', 'Videollamada o clase online', 'Ver videos o series en 4K', 'Jugar online', 'Descargar juegos o archivos', 'Cámara transmitiendo a la nube', 'Dispositivo inteligente en espera', 'Escuchar música', 'Subir archivos o respaldo a la nube', 'Conectado sin uso']
 RATES = np.array([0.5, 5, 1.5, 25, 3, 50, 0.1, 0.02, 0.3, 0.5, 0.01], dtype=float)
+SATURATED_WIFI_PRESET = 'Demostración de clase: ambas bandas saturadas'
 PRESETS = {
     'Una tarde en casa': [(0, 0, 2), (1, 2, 1), (2, 1, 1), (3, 4, 1)],
     'Todos viendo series': [(0, 1, 2), (2, 3, 2)],
     'Descargas y clases online': [(1, 2, 2), (3, 5, 2), (2, 1, 1)],
     'Ejemplo de la asignatura': [(0, 0, 2), (0, 2, 1), (1, 0, 1), (1, 2, 1), (2, 1, 2)],
     'Casa con cámaras y dispositivos inteligentes': [(4, 6, 4), (8, 7, 5), (6, 1, 1), (7, 8, 1)],
+    SATURATED_WIFI_PRESET: [(2, 3, 1), (1, 5, 1)],
     'Empezar desde cero': [],
 }
 
