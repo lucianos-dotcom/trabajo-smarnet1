@@ -43,10 +43,11 @@ class AppTests(unittest.TestCase):
         app.checkbox(key='know_upload').check().run()
         app.number_input(key='upload_capacity').set_value(5).run()
         self.assertTrue(any('No alcanza en este ejemplo' in m.value for m in app.markdown))
-        app.button(key='auto_bands').click().run()
-        self.assertEqual([row['band'] for row in app.session_state['rows']],
-                         ['2,4 GHz', '2,4 GHz', '5 GHz', '2,4 GHz'])
-        self.assertTrue(app.checkbox(key='model_wifi').value)
+        original = app.session_state['rows']
+        app.button(key='try_bands').click().run()
+        self.assertEqual(app.session_state['rows'], original)
+        self.assertTrue(any('→ 2,4 GHz' in m.value for m in app.markdown))
+        self.assertTrue(any('→ 5 GHz' in m.value for m in app.markdown))
         self.assertFalse(app.latex)
         self.assertFalse(app.exception)
 

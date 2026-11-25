@@ -6,7 +6,7 @@ Aplicación educativa para hogares en Chile: medición orientativa desde el nave
 
 Abre [SmartNet en Streamlit](https://trabajo-smarnet1-vcvluy6e6zhwpk7u5tnapy.streamlit.app/) en el navegador. La app pública requiere internet y se puede usar sin instalar Python. Si Streamlit muestra que la aplicación está en reposo, pulsa **Yes, get this app back up!** y espera a que cargue.
 
-Para la demostración, selecciona **20 Mbps**, carga **Ejemplo de la asignatura** y pulsa **Asignar bandas automáticamente**. El resultado aparece en el paso 3. Abre **Quiero ver los números** para ver la demanda estimada.
+Para la demostración, selecciona **20 Mbps**, carga **Ejemplo de la asignatura** y abre **Prueba una mejora → Probar cambio de bandas**. El resultado aparece en el paso 3. Abre **Quiero ver los números** para ver la demanda estimada.
 
 ## Windows
 
@@ -34,8 +34,8 @@ streamlit run app.py --server.headless true
 ## Flujo familiar
 
 1. **Conoce tu conexión.** Elige una velocidad de descarga o abre el test para importar una medición. Puedes ingresar también la velocidad de subida.
-2. **Arma tu escenario.** Elige un ejemplo o agrega grupos de equipos con actividad y conexión comunes. Pulsa **Asignar bandas automáticamente** para asignar 2,4 GHz a cámaras y equipos inteligentes y 5 GHz a los demás grupos Wi-Fi. Los grupos por cable conservan su conexión. Puedes corregir cada banda y editar las referencias supuestas en **Ajustes de Wi-Fi**.
-3. **Revisa el resultado.** Consulta las tarjetas de descarga, subida y bandas. En **Prueba una mejora**, simula pausar descargas o cambiar video de 4K a HD.
+2. **Arma tu escenario.** Elige un ejemplo o agrega grupos de equipos con actividad y conexión comunes. Puedes elegir manualmente las bandas y editar las referencias supuestas en **Ajustes de Wi-Fi**.
+3. **Revisa el resultado.** Consulta las tarjetas de descarga, subida y bandas. En **Prueba una mejora**, simula pausar descargas, cambiar video de 4K a HD o probar un reparto de bandas. La propuesta sugiere 2,4 GHz para cámaras y equipos inteligentes, y 5 GHz para los demás grupos Wi-Fi. Conserva los grupos por cable y permite comparar con el escenario original.
 
 Incluye celulares, PC, TV, consolas, cámaras, tablets, TV Box, parlantes, ampolletas/enchufes, impresoras y aspiradoras robot. El tipo organiza la matriz; es la **actividad elegida** la que determina la demanda.
 

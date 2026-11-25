@@ -16,6 +16,7 @@ div.stButton>button{border-radius:12px;min-height:44px}
 .st-key-family_summary{border-left:6px solid #0ea5e9}
 </style>''', unsafe_allow_html=True)
 st.session_state.setdefault('row_revision', 0)
+DEFAULT_WIFI_CAPS = dict(zip(BANDS[:2], (80.0, 300.0)))
 
 def row_key(field, i):
     return f'{field}_{st.session_state.row_revision}_{i}'
@@ -26,6 +27,7 @@ def replace_rows(rows):
     st.session_state.row_revision += 1
 
 def load_preset():
+    st.session_state.show_band_proposal = False
     replace_rows([
         dict(device=DEVICES[d], activity=ACTIVITIES[a], count=n, band=BANDS[3])
         for d, a, n in PRESETS[st.session_state.preset]
@@ -47,10 +49,6 @@ def remove_row(index):
     rows = current_rows()
     rows.pop(index)
     replace_rows(rows)
-
-def apply_suggested_bands():
-    replace_rows(suggest_bands(current_rows()))
-    st.session_state.model_wifi = True
 
 def apply_measurement():
     result = st.session_state.last_speed
@@ -105,10 +103,6 @@ upload = st.number_input('Subida de referencia (Mbps)', min_value=0.001, value=2
 st.subheader('2 · Arma tu escenario')
 st.selectbox('Prueba un ejemplo o arma tu casa', list(PRESETS), key='preset', on_change=load_preset)
 st.caption('Agrupa los equipos que hacen lo mismo y usan la misma conexión.')
-st.button('Asignar bandas automáticamente', key='auto_bands', on_click=apply_suggested_bands,
-          disabled=all(row.get('band') == BANDS[2] for row in st.session_state.rows))
-st.caption('La simulación sugiere 2,4 GHz para cámaras y equipos inteligentes, y 5 GHz para los demás. '
-           'Conserva los grupos por cable. Puedes ajustar cada banda según la señal y la compatibilidad.')
 rows=[]
 for i,row in enumerate(st.session_state.rows):
     with st.container(border=True):
@@ -129,7 +123,7 @@ with st.expander('Ajustes de Wi-Fi'):
     band_caps = {}
     if model_wifi:
         st.caption('Estas referencias son editables. Los equipos que usan 5 GHz suelen rendir mejor cerca del router.')
-        for col, band, default in zip(st.columns(2), BANDS[:2], [80.0, 300.0]):
+        for col, (band, default) in zip(st.columns(2), DEFAULT_WIFI_CAPS.items()):
             with col:
                 nominal = st.number_input(f'Capacidad supuesta {band} (Mbps)', min_value=0.1,
                                           value=default, key=f'wifi_capacity_{band}')
@@ -183,6 +177,32 @@ with st.expander('Prueba una mejora'):
         else:
             st.metric('Demanda de descarga con estos cambios', f"{improved['down']:g} Mbps",
                       delta=f"{improved['down'] - summary['down']:g} Mbps", delta_color='inverse')
+
+    can_suggest = any(row['count'] and row['band'] != BANDS[2] for row in rows)
+    if st.button('Probar cambio de bandas', key='try_bands', disabled=not can_suggest):
+        st.session_state.show_band_proposal = True
+    if can_suggest and st.session_state.get('show_band_proposal'):
+        proposed = suggest_bands(rows)
+        changes = [
+            f"Grupo {i} · {before['device']}: {before['band']} → {after['band']}"
+            for i, (before, after) in enumerate(zip(rows, proposed), start=1)
+            if before['count'] and before['band'] != after['band']
+        ]
+        st.markdown('#### Propuesta de bandas Wi-Fi')
+        if changes:
+            for change in changes:
+                st.write(change)
+        else:
+            st.write('Los grupos activos ya están en las bandas sugeridas.')
+        preview_caps = band_caps or DEFAULT_WIFI_CAPS
+        before = summary if model_wifi else network_summary(rows, capacity, upload, preview_caps)
+        after = network_summary(proposed, capacity, upload, preview_caps)
+        unknown_bands = before['bands'][BANDS[3]]['matrix'].sum() > 0
+        for band in BANDS[:2]:
+            previous = 'faltan datos' if unknown_bands else f"{before['bands'][band]['usage']:.1f}%"
+            st.write(f"{band} · Antes: {previous} · Con la propuesta: {after['bands'][band]['usage']:.1f}%")
+        st.caption('Simulación con capacidades supuestas. El cambio reparte la carga del Wi-Fi; '
+                   'la demanda de internet se mantiene. Antes de probarlo en casa, revisa la señal y la compatibilidad.')
 
 report=pd.DataFrame(rows,columns=['device','activity','count','band'])
 if not report.empty:

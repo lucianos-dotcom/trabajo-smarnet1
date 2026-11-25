@@ -83,27 +83,34 @@ async function verify(page) {
   await page.getByText('8.25 Mbps', { exact: true }).waitFor({ state: 'attached' });
   await page.getByText('165.0%', { exact: true }).waitFor({ state: 'attached' });
   await choose('Conexión del grupo 2', 'Cable de red');
-  await page.getByRole('button', { name: 'Asignar bandas automáticamente' }).click();
-  const assigned = presets[cameras].map((row, i) =>
-    [...row, ['2,4 GHz', 'Cable de red', '5 GHz', '2,4 GHz'][i]]);
-  await checkRows(assigned);
-  await page.getByText(/Ocupación estimada en 2,4 GHz: 10\.9%/, { exact: false }).waitFor({ state: 'attached' });
-  await page.getByText(/Ocupación estimada en 5 GHz: 1\.7%/, { exact: false }).waitFor({ state: 'attached' });
+  await choose('Conexión del grupo 1', '5 GHz');
+  const original = presets[cameras].map((row, i) =>
+    [...row, ['5 GHz', 'Cable de red', unknown, unknown][i]]);
+  const improvement = page.getByTestId('stExpander').filter({ hasText: 'Prueba una mejora' });
+  const solution = improvement.getByRole('button', { name: 'Probar cambio de bandas', includeHidden: true });
+  await page.getByText('Prueba una mejora', { exact: true }).click();
+  await solution.click();
+  await improvement.getByText('Grupo 1 · 📷 Cámara de seguridad: 5 GHz → 2,4 GHz', { exact: true }).waitFor();
+  await improvement.getByText('Grupo 3 · 📺 TV Box / decodificador: No sé la banda → 5 GHz', { exact: true }).waitFor();
+  assert.equal(await improvement.getByText(/^Grupo 2 /).count(), 0);
+  await improvement.getByText('2,4 GHz · Antes: faltan datos · Con la propuesta: 10.9%', { exact: true }).waitFor();
+  await improvement.getByText('5 GHz · Antes: faltan datos · Con la propuesta: 1.7%', { exact: true }).waitFor();
+  await checkRows(original);
 
   await add.click();
-  await checkRows([...assigned, [phone, chat, 1]]);
+  await checkRows([...original, [phone, chat, 1]]);
   await choose('Equipo 5', camera);
   await choose('Conexión del grupo 5', '5 GHz');
   await setNumber('Cantidad 5', 7);
-  await checkRows([[camera, cloud, 4, '2,4 GHz'], ...assigned.slice(1), [camera, cloud, 7, '5 GHz']]);
+  await checkRows([original[0], ...original.slice(1), [camera, cloud, 7, '5 GHz']]);
   await remove.nth(1).click();
-  await checkRows([[camera, cloud, 4, '2,4 GHz'], ...assigned.slice(2), [camera, cloud, 7, '5 GHz']]);
+  await checkRows([original[0], ...original.slice(2), [camera, cloud, 7, '5 GHz']]);
   await remove.first().click();
-  await checkRows([...assigned.slice(2), [camera, cloud, 7, '5 GHz']]);
+  await checkRows([...original.slice(2), [camera, cloud, 7, '5 GHz']]);
 
   await choose(preset, 'Empezar desde cero');
   await checkRows([]);
-  assert(await page.getByRole('button', { name: 'Asignar bandas automáticamente' }).isDisabled());
+  assert(await solution.isDisabled());
   await add.click();
   await checkRows([[phone, chat, 1]]);
   await remove.first().click();
