@@ -348,7 +348,7 @@ with st.container(key='presentation_frame'):
                             elif item['key'] == 'upload':
                                 if upload is None:
                                     st.write(f"Tus equipos necesitan **{summary['up']:g} Mbps de subida**.")
-                                    st.caption('En Conoce tu conexión, marca «Conozco mi velocidad de subida» '
+                                    st.caption('En la segunda pantalla, marca «Conozco mi velocidad de subida» '
                                                'e ingresa el valor, o usa el test de velocidad.')
                                 else:
                                     reference = 'del ejemplo' if classroom_demo else 'de referencia'
@@ -396,7 +396,7 @@ with st.container(key='presentation_frame'):
         with st.container(border=True, key='improvements'):
             st.subheader('4 · Prueba una mejora')
             st.write('Elige una acción y compara el antes y el después. Puedes combinar varias. '
-                     'Tu escenario original queda disponible en el paso 3.')
+                     'Puedes comparar con el resultado original de arriba.')
 
             downloads, video, wifi = st.columns(3)
             with downloads.container(border=True, key='action_pause'):

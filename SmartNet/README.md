@@ -33,10 +33,10 @@ streamlit run app.py --server.headless true
 
 ## Flujo familiar
 
-1. **Conoce tu conexión.** Elige una velocidad de descarga o abre el test para importar una medición. Puedes ingresar también la velocidad de subida.
-2. **Arma tu escenario.** Elige un ejemplo o agrega grupos de equipos con actividad y conexión comunes. Puedes elegir manualmente las bandas y editar las referencias supuestas en **Ajustes de Wi-Fi**.
-3. **Revisa el resultado.** Consulta las tarjetas de descarga, subida y bandas.
-4. **Prueba una mejora.** Compara el antes y el después. Puedes combinar varias acciones y simular pausar descargas, cambiar video de 4K a HD o probar un reparto de bandas. La propuesta sugiere 2,4 GHz para cámaras y equipos inteligentes, y 5 GHz para los demás grupos Wi-Fi. Conserva los grupos por cable y permite comparar con el escenario original.
+1. **Escenario.** Elige un ejemplo o empieza desde cero.
+2. **Conexión.** Ingresa las velocidades del plan, usa el test o revisa los valores que cargó el ejemplo.
+3. **Equipos.** Revisa los grupos, sus actividades y sus bandas. Puedes editar las capacidades supuestas en **Ajustes de Wi-Fi**.
+4. **Resultado y mejoras.** Consulta la descarga, la subida y las bandas. Compara el antes y el después al pausar descargas, cambiar de 4K a HD o repartir equipos entre bandas. La propuesta conserva los equipos conectados por cable.
 
 Incluye celulares, PC, TV, consolas, cámaras, tablets, TV Box, parlantes, ampolletas/enchufes, impresoras y aspiradoras robot. El tipo organiza la matriz; es la **actividad elegida** la que determina la demanda.
 
