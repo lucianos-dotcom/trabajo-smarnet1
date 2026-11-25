@@ -33,6 +33,9 @@ SCENARIOS = {
 }
 SOCIAL_PRESET = 'Solo uso el celular para redes sociales'
 SOCIAL_MESSAGES = 'Redes sociales, WhatsApp y navegación'
+ACTIVITY_OPTIONS = [ACTIVITIES[0], SHORT_VIDEO_ACTIVITY] + [
+    activity for activity in ACTIVITIES[1:] if activity != SHORT_VIDEO_ACTIVITY
+]
 SCENARIOS = {SOCIAL_PRESET: [(0, 0, 1)], **SCENARIOS}
 SCENARIOS.update(dict.fromkeys(CLASSROOM_UPLOADS, CLASSROOM_GROUPS))
 CLASSROOM_WIFI_CAPS = dict(zip(BANDS[:2], (20.0, 70.0)))
@@ -426,7 +429,7 @@ with st.container(key='presentation_frame'):
                 with st.container(border=True):
                     a,b,c,d = st.columns([3,4,2,3])
                     device = a.selectbox(f'Equipo {i+1}', DEVICES, index=DEVICES.index(row['device']), key=row_key('device', i), on_change=choose_device, args=(i,))
-                    activity = b.selectbox(f'Actividad {i+1}', ACTIVITIES, index=ACTIVITIES.index(row['activity']), key=row_key('activity', i),
+                    activity = b.selectbox(f'Actividad {i+1}', ACTIVITY_OPTIONS, index=ACTIVITY_OPTIONS.index(row['activity']), key=row_key('activity', i),
                                            format_func=lambda value: SOCIAL_MESSAGES if value == ACTIVITIES[0] else value)
                     count = c.number_input(f'Cantidad {i+1}', min_value=0, max_value=100, value=row['count'], step=1, key=row_key('count', i))
                     band = d.selectbox(f'Conexión del grupo {i+1}', BANDS, index=BANDS.index(row.get('band',BANDS[3])), key=row_key('band', i))
