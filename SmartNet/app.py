@@ -213,31 +213,32 @@ else:
 
 st.subheader('2 · Arma tu escenario')
 st.selectbox('Prueba un ejemplo o arma tu casa', list(SCENARIOS), key='preset', on_change=load_preset)
-custom_scenario = st.session_state.preset == 'Empezar desde cero'
-if classroom_demo:
-    st.write('Dos cámaras, una videollamada y tres tablets comparten 2,4 GHz. '
-             'En 5 GHz, un televisor reproduce una serie en 4K mientras un notebook descarga un juego.')
-if not custom_scenario:
-    equipment = sum(row['count'] for row in current_rows())
-    st.caption(f'Equipos en este escenario: {equipment}.')
-show_equipment = custom_scenario or st.toggle('Ver o editar equipos', key='edit_equipment')
-rows = current_rows()
-if show_equipment:
-    st.caption('Agrupa los equipos que hacen lo mismo y usan la misma conexión.')
-    rows = []
-    for i,row in enumerate(st.session_state.rows):
-        with st.container(border=True):
-            a,b,c,d = st.columns([3,4,2,3])
-            device = a.selectbox(f'Equipo {i+1}', DEVICES, index=DEVICES.index(row['device']), key=row_key('device', i), on_change=choose_device, args=(i,))
-            activity = b.selectbox(f'Actividad {i+1}', ACTIVITIES, index=ACTIVITIES.index(row['activity']), key=row_key('activity', i))
-            count = c.number_input(f'Cantidad {i+1}', min_value=0, max_value=100, value=row['count'], step=1, key=row_key('count', i))
-            band = d.selectbox(f'Conexión del grupo {i+1}', BANDS, index=BANDS.index(row.get('band',BANDS[3])), key=row_key('band', i))
-            st.button('Quitar este grupo', key=row_key('remove', i), on_click=remove_row, args=(i,))
-            rows.append(dict(device=device, activity=activity, count=int(count), band=band))
-    st.session_state.rows=rows
-    if st.button('＋ Agregar otro equipo', key='add'):
-        st.session_state.rows.append(dict(device=DEVICES[0], activity=ACTIVITIES[0], count=1, band=BANDS[3]))
-        st.rerun()
+with st.container(key=f'scenario_{st.session_state.row_revision}'):
+    custom_scenario = st.session_state.preset == 'Empezar desde cero'
+    if classroom_demo:
+        st.write('Dos cámaras, una videollamada y tres tablets comparten 2,4 GHz. '
+                 'En 5 GHz, un televisor reproduce una serie en 4K mientras un notebook descarga un juego.')
+    if not custom_scenario:
+        equipment = sum(row['count'] for row in current_rows())
+        st.caption(f'Equipos en este escenario: {equipment}.')
+    show_equipment = custom_scenario or st.toggle('Ver o editar equipos', key='edit_equipment')
+    rows = current_rows()
+    if show_equipment:
+        st.caption('Agrupa los equipos que hacen lo mismo y usan la misma conexión.')
+        rows = []
+        for i,row in enumerate(st.session_state.rows):
+            with st.container(border=True):
+                a,b,c,d = st.columns([3,4,2,3])
+                device = a.selectbox(f'Equipo {i+1}', DEVICES, index=DEVICES.index(row['device']), key=row_key('device', i), on_change=choose_device, args=(i,))
+                activity = b.selectbox(f'Actividad {i+1}', ACTIVITIES, index=ACTIVITIES.index(row['activity']), key=row_key('activity', i))
+                count = c.number_input(f'Cantidad {i+1}', min_value=0, max_value=100, value=row['count'], step=1, key=row_key('count', i))
+                band = d.selectbox(f'Conexión del grupo {i+1}', BANDS, index=BANDS.index(row.get('band',BANDS[3])), key=row_key('band', i))
+                st.button('Quitar este grupo', key=row_key('remove', i), on_click=remove_row, args=(i,))
+                rows.append(dict(device=device, activity=activity, count=int(count), band=band))
+        st.session_state.rows=rows
+        if st.button('＋ Agregar otro equipo', key='add'):
+            st.session_state.rows.append(dict(device=DEVICES[0], activity=ACTIVITIES[0], count=1, band=BANDS[3]))
+            st.rerun()
 
 default_band_caps = CLASSROOM_WIFI_CAPS if classroom_demo else DEFAULT_WIFI_CAPS
 wifi_key_prefix = f'classroom_{st.session_state.classroom_wifi_revision}_' if classroom_demo else ''

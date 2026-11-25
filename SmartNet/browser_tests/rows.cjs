@@ -41,9 +41,19 @@ async function verify(page) {
   const number = label => page.getByRole('spinbutton', { name: label, exact: true });
   const remove = page.getByRole('button', { name: 'Quitar este grupo', exact: true });
   const add = page.getByRole('button', { name: '＋ Agregar otro equipo', exact: true });
+  const scenarioEditor = '[class*="st-key-scenario_"]';
   const choose = async (label, option) => {
+    const previous = label === 'Prueba un ejemplo o arma tu casa'
+      ? await page.locator(scenarioEditor).getAttribute('class')
+      : null;
     await box(label).getByRole('combobox').click();
     await page.getByRole('option', { name: option, exact: true }).click();
+    if (previous) {
+      await page.waitForFunction(({ selector, old }) => {
+        const editor = document.querySelector(selector);
+        return editor && editor.className !== old;
+      }, { selector: scenarioEditor, old: previous });
+    }
   };
   const setNumber = async (label, value) => {
     await number(label).fill(String(value));
