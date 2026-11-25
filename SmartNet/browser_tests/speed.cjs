@@ -41,7 +41,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     assert(measured>0);
     await page.getByRole('button',{name:'Siguiente →',exact:true}).click();
     await page.getByRole('button',{name:'Ver resultado →',exact:true}).click();
-    await page.getByText('Detalle y números',{exact:true}).click();
+    await page.getByText('Detalle y números',{exact:true}).last().click();
     await page.getByText('Referencia: Medición del test de SmartNet.',{exact:true}).waitFor();
     const context=page.locator('.st-key-slide_context');
     const reference=Number((await context.innerText()).match(/([0-9.]+) Mbps de descarga/)[1]);

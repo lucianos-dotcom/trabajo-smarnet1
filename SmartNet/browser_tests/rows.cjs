@@ -113,7 +113,7 @@ async function verify(page) {
     await choose(preset, scenario);
     await checkRows(saturatedRows);
     await goTo(3);
-    const overview = page.locator('.st-key-family_summary');
+    const overview = page.locator('.st-key-family_summary').last();
     await overview.getByText(/Necesitan atención:.*2,4 GHz.*5 GHz/).waitFor();
     await page.getByTestId('stExpander').filter({hasText:'Detalle y números'})
       .getByText(usage,{exact:true}).waitFor({state:'attached'});
@@ -123,7 +123,7 @@ async function verify(page) {
   await checkRows(presets[afternoon]);
   await choose('¿Cuántos megas tiene tu plan?', '20 Mbps');
   await goTo(3);
-  const detail = page.getByText('Detalle y números', { exact: true });
+  const detail = page.getByText('Detalle y números', { exact: true }).last();
   if (!await page.getByText('Uso estimado de descarga',{exact:true}).isVisible()) await detail.click();
   await metric('Descarga que necesitan los equipos', '10.5 Mbps');
   await metric('Uso estimado de descarga', '52.5%');
@@ -151,7 +151,7 @@ async function verify(page) {
   const movesHeading = moveDetails.getByText('Equipos que cambiarían de banda',{exact:true});
   await movesHeading.waitFor({state:'attached'});
   if (!await movesHeading.isVisible()) {
-    await page.getByText('Detalle y números',{exact:true}).click();
+    await page.getByText('Detalle y números',{exact:true}).last().click();
   }
   await moveDetails.getByText('Grupo 1 · 📷 Cámara de seguridad: 5 GHz → 2,4 GHz', { exact: true }).waitFor();
   await moveDetails.getByText('Grupo 3 · 📺 TV Box / decodificador: No sé la banda → 5 GHz', { exact: true }).waitFor();

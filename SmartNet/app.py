@@ -258,17 +258,18 @@ if 'rows' not in st.session_state:
 
 presentation_step = min(st.session_state.get('presentation_step', 0), len(PRESENTATION_PAGES) - 1)
 page_key, question = PRESENTATION_PAGES[presentation_step]
-if page_key != 'result':
-    with st.container(key='hero'):
-        st.title('SmartNet · ¿Alcanza tu internet para todos?')
-        st.write('Descubre qué parte de la conexión se queda corta y prueba cómo darle más espacio.')
-        st.markdown(
-            '<div class="smartnet-route" role="img" aria-label="Internet se comunica con el router, que se comunica con los equipos">'
-            '<span>Internet</span> ⇄ <span>Router</span> ⇄ <span>Equipos de casa</span></div>',
-            unsafe_allow_html=True,
-        )
+with st.container(key='hero'):
+    st.title('SmartNet · ¿Alcanza tu internet para todos?')
+    st.write('Descubre qué parte de la conexión se queda corta y prueba cómo darle más espacio.')
+    st.markdown(
+        '<div class="smartnet-route" role="img" aria-label="Internet se comunica con el router, que se comunica con los equipos">'
+        '<span>Internet</span> ⇄ <span>Router</span> ⇄ <span>Equipos de casa</span></div>',
+        unsafe_allow_html=True,
+    )
 
 hidden_pages = ', '.join(f'.st-key-page_{key}' for key, _ in PRESENTATION_PAGES if key != page_key)
+if page_key == 'result':
+    hidden_pages += ', .st-key-hero'
 st.markdown(f'<style>{hidden_pages} {{display: none !important;}}</style>', unsafe_allow_html=True)
 with st.container(border=True, key='presentation_nav'):
     st.progress((presentation_step + 1) / len(PRESENTATION_PAGES),
