@@ -24,8 +24,9 @@ const presets = {
     [camera, cloud, 4], ['💡 Ampolleta o enchufe inteligente', 'Dispositivo inteligente en espera', 5],
     ['📺 TV Box / decodificador', hd, 1], ['🔊 Parlante inteligente', 'Escuchar música', 1],
   ],
-  'Demostración de clase: ambas bandas saturadas': [
-    [tv, 'Ver videos o series en 4K', 1, '2,4 GHz'], [pc, 'Descargar juegos o archivos', 1, '5 GHz'],
+  'Casa con Wi-Fi saturado': [
+    [camera, cloud, 2, '2,4 GHz'], [phone, call, 1, '2,4 GHz'],
+    [tv, 'Ver videos o series en 4K', 1, '5 GHz'], [pc, 'Descargar juegos o archivos', 1, '5 GHz'],
   ],
   'Empezar desde cero': [],
 };
@@ -69,7 +70,7 @@ async function verify(page) {
     await checkRows(presets[name]);
   }
 
-  const saturated = 'Demostración de clase: ambas bandas saturadas';
+  const saturated = 'Casa con Wi-Fi saturado';
   await choose(preset, saturated);
   await checkRows(presets[saturated]);
   for (const band of ['2,4 GHz', '5 GHz']) {

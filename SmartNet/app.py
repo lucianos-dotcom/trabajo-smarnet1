@@ -17,7 +17,8 @@ div.stButton>button{border-radius:12px;min-height:44px}
 </style>''', unsafe_allow_html=True)
 st.session_state.setdefault('row_revision', 0)
 DEFAULT_WIFI_CAPS = dict(zip(BANDS[:2], (80.0, 300.0)))
-CLASSROOM_WIFI_CAPS = dict(zip(BANDS[:2], (20.0, 40.0)))
+CLASSROOM_WIFI_CAPS = dict(zip(BANDS[:2], (24.0, 120.0)))
+CLASSROOM_SIGNAL_OPTIONS = dict(zip(BANDS[:2], (2, 1)))
 
 def row_key(field, i):
     return f'{field}_{st.session_state.row_revision}_{i}'
@@ -33,7 +34,7 @@ def load_preset():
     groups = PRESETS[preset]
     bands = [BANDS[3]] * len(groups)
     if preset == SATURATED_WIFI_PRESET:
-        bands = BANDS[:2]
+        bands = [BANDS[0], BANDS[0], BANDS[1], BANDS[1]]
         st.session_state.classroom_wifi_revision = st.session_state.row_revision + 1
     replace_rows([
         dict(device=DEVICES[d], activity=ACTIVITIES[a], count=n, band=band)
@@ -111,8 +112,11 @@ st.subheader('2 · Arma tu escenario')
 st.selectbox('Prueba un ejemplo o arma tu casa', list(PRESETS), key='preset', on_change=load_preset)
 classroom_demo = st.session_state.preset == SATURATED_WIFI_PRESET
 if classroom_demo:
-    st.caption('La demostración carga referencias Wi-Fi de 20 Mbps en 2,4 GHz y 40 Mbps en 5 GHz. '
-               'Puedes editarlas en Ajustes de Wi-Fi.')
+    st.write('En la tarde, dos cámaras del patio suben video y alguien está en una videollamada lejos '
+             'del router. Al mismo tiempo, se reproduce una serie en 4K y un notebook descarga un juego '
+             'en una habitación separada por paredes.')
+    st.caption('El ejemplo parte con 6 Mbps de capacidad Wi-Fi estimada en 2,4 GHz '
+               'y 60 Mbps en 5 GHz. Son referencias editables en Ajustes de Wi-Fi.')
 else:
     st.caption('Agrupa los equipos que hacen lo mismo y usan la misma conexión.')
 rows=[]
@@ -142,7 +146,9 @@ with st.expander('Ajustes de Wi-Fi'):
             with col:
                 nominal = st.number_input(f'Capacidad supuesta {band} (Mbps)', min_value=0.1,
                                           value=default, key=f'{wifi_key_prefix}wifi_capacity_{band}')
-                signal = st.selectbox(f'Escenario de señal {band}', list(SIGNALS), key=f'{wifi_key_prefix}signal_{band}')
+                signal_index = CLASSROOM_SIGNAL_OPTIONS[band] if classroom_demo else 0
+                signal = st.selectbox(f'Escenario de señal {band}', list(SIGNALS), index=signal_index,
+                                      key=f'{wifi_key_prefix}signal_{band}')
                 band_caps[band] = nominal * SIGNALS[signal]
 
 summary = network_summary(rows, capacity, upload, band_caps)
@@ -210,6 +216,11 @@ with st.expander('Prueba una mejora'):
         else:
             st.write('Los grupos activos ya están en las bandas sugeridas.')
         preview_caps = band_caps or default_band_caps
+        if classroom_demo and not model_wifi:
+            preview_caps = {
+                band: nominal * list(SIGNALS.values())[CLASSROOM_SIGNAL_OPTIONS[band]]
+                for band, nominal in CLASSROOM_WIFI_CAPS.items()
+            }
         before = summary if model_wifi else network_summary(rows, capacity, upload, preview_caps)
         after = network_summary(proposed, capacity, upload, preview_caps)
         unknown_bands = before['bands'][BANDS[3]]['matrix'].sum() > 0
