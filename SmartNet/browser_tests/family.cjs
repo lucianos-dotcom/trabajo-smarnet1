@@ -70,7 +70,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     assert.equal(await metrics.isVisible(),false);
     await slides.locator('.st-key-improvements').getByText(/Prueba cambiar equipos de banda/).waitFor();
     await slides.getByRole('button',{name:'Probar cambio de bandas',exact:true}).click();
-    await slides.getByText('Todavía falta capacidad en el plan de internet.',{exact:true}).waitFor();
+    await slides.getByText('El plan de internet queda justo para este uso. Los equipos necesitan 102 Mbps y el plan ofrece 100 Mbps.',{exact:true}).waitFor();
     await slides.getByText('Cambiar de 4K a HD',{exact:true}).click();
     await slides.getByText('El Wi-Fi alcanza con estos cambios.',{exact:true}).waitFor();
     const chart=slides.getByRole('img',{name:'Antes: 145.0% · Con la propuesta: 70.0%',exact:true});

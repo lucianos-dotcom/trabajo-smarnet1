@@ -82,7 +82,10 @@ class AppTests(unittest.TestCase):
         app.button(key='try_bands').click().run()
         self.assertTrue(any('145.0% · Con la propuesta: 70.0%' in item.value for item in app.markdown))
         self.assertTrue(any('56.0% · Con la propuesta: 86.0%' in item.value for item in app.markdown))
-        self.assertTrue(any('Todavía falta capacidad en el plan de internet' in item.value for item in app.warning))
+        self.assertIn(
+            'El plan de internet queda justo para este uso. Los equipos necesitan 114 Mbps y el plan ofrece 100 Mbps.',
+            [item.value for item in app.warning],
+        )
         app.checkbox(key='lower').check().run()
         self.assertEqual(next(metric.value for metric in app.metric
                               if metric.label == 'Demanda total con estos cambios'), '93 Mbps')

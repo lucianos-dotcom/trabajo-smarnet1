@@ -593,7 +593,10 @@ with st.container(key='presentation_frame'):
                         parts.get(item['key'], item['key'])
                         for item in checks(improved, known, compare_wifi) if item['state'] == 'over'
                     ]
-                    if remaining:
+                    if classroom_demo and remaining == [parts['download']]:
+                        st.warning('El plan de internet queda justo para este uso. '
+                                   f"Los equipos necesitan {improved['down']:g} Mbps y el plan ofrece {capacity:g} Mbps.")
+                    elif remaining:
                         st.warning(f"Todavía falta capacidad en {' y '.join(remaining)}.")
                     elif compare_wifi and wifi_usage(improved):
                         st.success('El Wi-Fi alcanza con estos cambios.')
