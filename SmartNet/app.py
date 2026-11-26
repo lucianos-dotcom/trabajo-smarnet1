@@ -20,8 +20,8 @@ styles = Path(__file__).with_name('styles.css').read_text(encoding='utf-8')
 st.markdown(f'<style>{styles}</style>', unsafe_allow_html=True)
 st.session_state.setdefault('row_revision', 0)
 DEFAULT_WIFI_CAPS = dict(zip(BANDS[:2], (80.0, 300.0)))
-CLASSROOM_PRESET = 'Casa de 200 Mbps · Wi-Fi saturado'
-CLASSROOM_SPEED = 200.0
+CLASSROOM_SPEED = 100.0
+CLASSROOM_PRESET = f'Casa de {CLASSROOM_SPEED:g} Mbps · Wi-Fi saturado'
 CLASSROOM_GROUPS = [(4, 6, 2), (0, 2, 1), (0, 1, 3), (2, 3, 1), (1, 5, 1)]
 CLASSROOM_BANDS = [BANDS[0], BANDS[0], BANDS[0], BANDS[1], BANDS[2]]
 # Streamlit can retain the previous household module across a code update.

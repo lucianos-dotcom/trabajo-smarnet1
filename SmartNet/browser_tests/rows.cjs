@@ -13,7 +13,7 @@ const hd = 'Ver videos o series en HD';
 const cloud = 'Cámara transmitiendo a la nube';
 const unknown = 'No sé la banda';
 
-const classroom = 'Casa de 200 Mbps · Wi-Fi saturado';
+const classroom = 'Casa de 100 Mbps · Wi-Fi saturado';
 const saturatedRows = [
   [camera, cloud, 2, '2,4 GHz'], [phone, call, 1, '2,4 GHz'], [phone, hd, 3, '2,4 GHz'],
   [tv, 'Ver videos o series en 4K', 1, '5 GHz'], [pc, 'Descargar juegos o archivos', 1, 'Cable de red'],
@@ -112,13 +112,14 @@ async function verify(page) {
 
   await choose(preset, classroom);
   await checkRows(saturatedRows);
-  await metric('Velocidad de descarga de referencia', '200 Mbps');
+  await metric('Velocidad de descarga de referencia', '100 Mbps');
+  await metric('Uso estimado de descarga', '91.7%');
   const overview = page.locator('.st-key-family_summary').last();
   await overview.getByText('Necesitan atención: 2,4 GHz', { exact: true }).waitFor();
   await overview.getByRole('img', { name: /^2,4 GHz: 112,5%/ }).waitFor();
   await overview.getByRole('img', { name: /^5 GHz: 35,9%/ }).waitFor();
   await page.getByTestId('stExpander').filter({ hasText: 'Detalle y números' })
-    .getByText('3.2%', { exact: true }).waitFor({ state: 'attached' });
+    .getByText('6.4%', { exact: true }).waitFor({ state: 'attached' });
 
   await choose(preset, afternoon);
   await checkRows(presets[afternoon]);

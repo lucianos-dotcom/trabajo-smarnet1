@@ -64,12 +64,14 @@ class AppTests(unittest.TestCase):
         app.selectbox(key='plan').select('500 Mbps').run()
         selector = app.selectbox(key='preset')
         for retired in ('Wi-Fi saturado · Plan simétrico 300/300 Mbps',
-                        'Wi-Fi saturado · Plan asimétrico 300/10 Mbps'):
+                        'Wi-Fi saturado · Plan asimétrico 300/10 Mbps',
+                        'Casa de 200 Mbps · Wi-Fi saturado'):
             self.assertNotIn(retired, selector.options)
-        selector.select('Casa de 200 Mbps · Wi-Fi saturado').run()
-        self.assertEqual(app.metric[1].value, '200 Mbps')
+        selector.select('Casa de 100 Mbps · Wi-Fi saturado').run()
+        self.assertEqual(app.metric[1].value, '100 Mbps')
+        self.assertEqual(app.metric[2].value, '91.7%')
         text = [item.value for item in app.markdown]
-        self.assertIn('Subida del ejemplo: **200 Mbps** · uso estimado: **3.2%**.', text)
+        self.assertIn('Subida del ejemplo: **100 Mbps** · uso estimado: **6.4%**.', text)
         self.assertTrue(any(line.startswith('**2,4 GHz.**') and '**112.5%**' in line for line in text))
         self.assertTrue(any(line.startswith('**5 GHz.**') and '**35.9%**' in line for line in text))
         self.assertTrue(any('El plan alcanza para enviar y recibir' in line for line in text))
@@ -87,7 +89,7 @@ class AppTests(unittest.TestCase):
 
     def test_classroom_combines_improvements(self):
         app = self.app()
-        app.selectbox(key='preset').select('Casa de 200 Mbps · Wi-Fi saturado').run()
+        app.selectbox(key='preset').select('Casa de 100 Mbps · Wi-Fi saturado').run()
         next(box for box in app.selectbox if box.label == 'Conexión del grupo 5').select('5 GHz').run()
         original = app.session_state['rows']
         app.button(key='try_bands').click().run()
