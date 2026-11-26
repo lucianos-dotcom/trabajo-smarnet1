@@ -431,8 +431,7 @@ with st.container(key='presentation_frame'):
         with st.container(key=f'scenario_{st.session_state.row_revision}'):
             custom_scenario = st.session_state.preset == 'Empezar desde cero'
             if classroom_demo:
-                st.write('Siete cámaras, dos celulares, cuatro Smart TV y tres TV Box. '
-                         'Los consumos por equipo vienen del ejemplo de la presentación.')
+                st.write('Siete cámaras, dos celulares, cuatro Smart TV y tres TV Box.')
             if st.session_state.preset == SOCIAL_PRESET:
                 st.caption('El celular ya está agregado. Si ves Reels o TikTok, elige «Videos cortos en redes» como actividad.')
             if not custom_scenario:
