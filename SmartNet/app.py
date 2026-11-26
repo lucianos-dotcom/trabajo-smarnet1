@@ -277,6 +277,13 @@ def changed_readings(comparisons, baseline, improved):
     return result
 
 
+def detail_value(value, unit):
+    if value is None:
+        return '—'
+    text = f'{value:.1f}' if unit == '%' else f'{value:g}'
+    return text.replace('.', ',') + unit
+
+
 def show_connection_steps(plan_limits, wifi_limited, social_only):
     with st.container(border=True, key='connection_steps'):
         st.markdown('#### Qué hacer si anda lento' if not plan_limits else '#### Qué hacer si falta capacidad')
@@ -646,53 +653,49 @@ with st.container(key='presentation_frame'):
                 show_connection_steps(plan_limits, wifi_limited, social_only)
 
         with st.expander('Detalle y números'):
-            with st.container(key='slide_context'):
+            with st.container(key='result_details'):
                 st.markdown(f"**{st.session_state.preset}**")
-                st.caption(f'{total_equipment} equipos · {connection}')
-                st.caption(f'Referencia: {reference_source}.')
+                source = reference_source if known else 'Descarga hipotética'
+                st.caption(f'{total_equipment} equipos · {source}.')
 
-            st.caption('Por encima del 100%, las actividades juntas necesitan más capacidad de la disponible.')
-            st.markdown('#### Plan de internet')
-            a, b, c = st.columns(3)
-            a.metric('Demanda total del ejemplo' if classroom_demo else 'Descarga que necesitan los equipos',
-                     f"{summary['down']:g} Mbps")
-            b.metric('Capacidad del plan' if classroom_demo else 'Velocidad de descarga de referencia', f'{capacity:g} Mbps')
-            c.metric('Uso estimado del plan' if classroom_demo else 'Uso estimado de descarga', f"{summary['down_usage']:.1f}%")
-            if not known:
-                st.caption('La descarga de referencia es hipotética. Sirve para probar el escenario.')
-            if not classroom_demo:
-                st.write(f"**Subida.** Tus equipos necesitan enviar **{summary['up']:g} Mbps** a internet.")
-                if upload is not None:
-                    st.write(f"Subida de referencia: **{upload:g} Mbps** · uso estimado: **{summary['up_usage']:.1f}%**.")
-                else:
-                    st.write('Subida de referencia: pendiente. Falta ese dato para saber si alcanza.')
-            if model_wifi:
-                st.markdown('#### Wi-Fi de la casa')
-                st.caption('Se suma la demanda de los equipos en cada banda. '
-                           'Las capacidades de las bandas son valores de referencia.')
-                for band in BANDS[:2]:
-                    data = summary['bands'][band]
-                    st.write(f"**{band}.** Los equipos necesitan **{data['traffic']:g} Mbps** y la banda tiene "
-                             f"**{data['capacity']:g} Mbps** en este ejemplo. "
-                             f"Eso equivale al **{data['usage']:.1f}%** de su capacidad.")
+                details = [('Plan' if classroom_demo else 'Descarga', summary['down'], capacity, summary['down_usage'])]
+                if not classroom_demo:
+                    details.append(('Subida', summary['up'], upload, summary['up_usage']))
+                if model_wifi:
+                    for band in BANDS[:2]:
+                        data = summary['bands'][band]
+                        details.append((band, data['traffic'], data['capacity'],
+                                        None if incomplete_bands else data['usage']))
+                table = pd.DataFrame(
+                    [(name, detail_value(demand, ' Mbps'), detail_value(limit, ' Mbps'), detail_value(usage, '%'))
+                     for name, demand, limit, usage in details],
+                    columns=['Conexión', 'Demanda', 'Capacidad', 'Uso'],
+                ).set_index('Conexión')
+                st.table(table, border='horizontal')
+                notes = []
+                if model_wifi:
+                    notes.append('Las capacidades de Wi-Fi son estimadas. El plan se comparte entre las bandas.')
+                if incomplete_bands:
+                    notes.append('El uso de Wi-Fi queda pendiente hasta asignar todas las bandas.')
+                if not classroom_demo and upload is None:
+                    notes.append('La capacidad de subida está por confirmar.')
+                if notes:
+                    st.caption(' '.join(notes))
 
-            extra_charts = [reading for reading in changes_to_chart if reading not in visible_charts]
-            if changed and not isclose(baseline['down'], improved['down']):
-                label = 'Demanda total con estos cambios' if classroom_demo else 'Demanda de descarga con estos cambios'
-                st.metric(label, f"{improved['down']:g} Mbps",
-                          delta=f"{improved['down'] - baseline['down']:g} Mbps", delta_color='inverse')
-            if extra_charts:
-                st.markdown('#### Otros cambios')
-                for title, before, after, unit in extra_charts:
-                    st.markdown(f'**{title}**')
-                    show_change_chart(before, after, unit)
-                    show_change_status(before, after, unit)
-
-            if changes:
-                st.markdown('#### Equipos que cambiarían de banda')
+                improvement_lines = []
+                demand_changed = changed and not isclose(baseline['down'], improved['down'])
+                if demand_changed:
+                    demand_label = 'Demanda total' if classroom_demo else 'Demanda de descarga'
+                    improvement_lines.append(f'**{demand_label}** · {detail_value(baseline["down"], " Mbps")} '
+                                             f'→ **{detail_value(improved["down"], " Mbps")}**')
+                for reading in changes_to_chart:
+                    title, before, after, unit = reading
+                    if reading not in visible_charts and not (demand_changed and title == labels['download'] and unit == ' Mbps'):
+                        improvement_lines.append(f'**{title}** · {detail_value(before, unit)} → **{detail_value(after, unit)}**')
                 for i, device, old_band, new_band in changes:
-                    st.write(f'Grupo {i} · {device}: {old_band} → {new_band}')
-                st.caption('Antes de mover un equipo, revisa que admita la banda y tenga buena señal.')
+                    improvement_lines.append(f'Grupo {i} · {device} · {old_band} → {new_band}')
+                if improvement_lines:
+                    st.markdown('**Con la mejora**\n\n' + '\n'.join(f'- {line}' for line in improvement_lines))
 
         if page_key == 'result':
             actions = [

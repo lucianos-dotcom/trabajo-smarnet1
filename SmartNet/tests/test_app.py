@@ -6,6 +6,9 @@ class AppTests(unittest.TestCase):
     def app(self):
         return AppTest.from_file(str(Path(__file__).resolve().parents[1] / 'app.py')).run(timeout=30)
 
+    def details(self, app):
+        return app.table[0].value
+
     def test_scenario_and_capacity(self):
         app = self.app()
         self.assertFalse(app.exception)
@@ -13,10 +16,9 @@ class AppTests(unittest.TestCase):
         app.selectbox(key='preset').select('Una tarde en casa').run()
         app.toggle(key='manual_reference').set_value(True).run()
         app.selectbox(key='plan').select('Ingresar otra velocidad').run()
-        self.assertEqual(app.metric[0].value, '10.5 Mbps')
-        self.assertEqual(app.metric[2].value, '52.5%')
+        self.assertEqual(tuple(self.details(app).loc['Descarga']), ('10,5 Mbps', '20 Mbps', '52,5%'))
         app.number_input(key='custom_capacity').set_value(10).run()
-        self.assertEqual(app.metric[2].value, '105.0%')
+        self.assertEqual(self.details(app).loc['Descarga', 'Uso'], '105,0%')
         self.assertTrue(any('Necesitan atención' in c.value for c in app.caption))
         self.assertFalse(app.exception)
 
@@ -24,8 +26,7 @@ class AppTests(unittest.TestCase):
         app = self.app()
         app.selectbox(key='preset').select('Descargas y clases online').run()
         app.checkbox(key='pause').check().run()
-        self.assertEqual(next(metric.value for metric in app.metric
-                              if metric.label == 'Demanda de descarga con estos cambios'), '8 Mbps')
+        self.assertTrue(any('**Demanda de descarga** · 108 Mbps → **8 Mbps**' in item.value for item in app.markdown))
         self.assertTrue(any('Antes: 108.0 Mbps · Con la propuesta: 8.0 Mbps' in item.value
                             for item in app.markdown))
         app.button(key='add').click().run()
@@ -34,7 +35,7 @@ class AppTests(unittest.TestCase):
         self.assertEqual(len(app.session_state['rows']), 3)
         self.assertFalse(app.exception)
         app.selectbox(key='preset').select('Empezar desde cero').run()
-        self.assertEqual(app.metric[0].value, '0 Mbps')
+        self.assertEqual(self.details(app).loc['Descarga', 'Demanda'], '0 Mbps')
         app.button(key='add').click().run()
         app.toggle(key='manual_reference').set_value(True).run()
         app.selectbox(key='plan').select('No sé mi velocidad').run()
@@ -44,11 +45,11 @@ class AppTests(unittest.TestCase):
     def test_bands_and_camera_preset(self):
         app=self.app()
         app.selectbox(key='preset').select('Casa con cámaras y dispositivos inteligentes').run()
-        self.assertTrue(any('Subida de referencia: pendiente' in m.value for m in app.markdown))
+        self.assertEqual(tuple(self.details(app).loc['Subida']), ('8,25 Mbps', '—', '—'))
         app.toggle(key='manual_reference').set_value(True).run()
         app.checkbox(key='know_upload').check().run()
         app.number_input(key='upload_capacity').set_value(5).run()
-        self.assertTrue(any('165.0%' in m.value and 'Subida de referencia' in m.value for m in app.markdown))
+        self.assertEqual(tuple(self.details(app).loc['Subida']), ('8,25 Mbps', '5 Mbps', '165,0%'))
         self.assertTrue(any('Necesitan atención' in c.value for c in app.caption))
         original = app.session_state['rows']
         app.button(key='try_bands').click().run()
@@ -69,13 +70,12 @@ class AppTests(unittest.TestCase):
                         'Casa de 100 Mbps · Wi-Fi saturado'):
             self.assertNotIn(retired, selector.options)
         selector.select('Casa de 100 Mbps · Caso de clase').run()
-        self.assertEqual(app.metric[0].value, '114 Mbps')
-        self.assertEqual(app.metric[1].value, '100 Mbps')
-        self.assertEqual(app.metric[2].value, '114.0%')
+        detail = self.details(app)
+        self.assertEqual(list(detail.index), ['Plan', '2,4 GHz', '5 GHz'])
+        self.assertEqual(tuple(detail.loc['Plan']), ('114 Mbps', '100 Mbps', '114,0%'))
+        self.assertEqual(tuple(detail.loc['2,4 GHz']), ('58 Mbps', '40 Mbps', '145,0%'))
+        self.assertEqual(tuple(detail.loc['5 GHz']), ('56 Mbps', '100 Mbps', '56,0%'))
         text = [item.value for item in app.markdown]
-        self.assertFalse(any('Subida de referencia' in line for line in text))
-        self.assertTrue(any(line.startswith('**2,4 GHz.**') and '**145.0%**' in line for line in text))
-        self.assertTrue(any(line.startswith('**5 GHz.**') and '**56.0%**' in line for line in text))
         self.assertIn('### El plan de internet se queda corto', text)
         original = app.session_state['rows']
         self.assertEqual([row['count'] for row in original], [7, 2, 4, 3])
@@ -87,8 +87,7 @@ class AppTests(unittest.TestCase):
             [item.value for item in app.warning],
         )
         app.checkbox(key='lower').check().run()
-        self.assertEqual(next(metric.value for metric in app.metric
-                              if metric.label == 'Demanda total con estos cambios'), '93 Mbps')
+        self.assertTrue(any('**Demanda total** · 114 Mbps → **93 Mbps**' in item.value for item in app.markdown))
         self.assertTrue(any('El Wi-Fi alcanza con estos cambios' in item.value for item in app.success))
         self.assertEqual(app.session_state['rows'], original)
         self.assertFalse(app.exception)
@@ -100,8 +99,7 @@ class AppTests(unittest.TestCase):
         app.selectbox(key='preset').select('Casa de 100 Mbps · Caso de clase').run()
         for count, demand in ((2, 102), (1, 90), (0, 78)):
             next(box for box in app.number_input if box.label == 'Cantidad 4').set_value(count).run()
-            self.assertEqual(app.metric[0].value, f'{demand} Mbps')
-            self.assertEqual(app.metric[2].value, f'{demand}.0%')
+            self.assertEqual(tuple(self.details(app).loc['Plan']), (f'{demand} Mbps', '100 Mbps', f'{demand},0%'))
             self.assertFalse(app.exception)
 
     def test_wifi_advice_when_no_action_relieves_overload(self):
@@ -145,7 +143,7 @@ class AppTests(unittest.TestCase):
         self.assertFalse(any('Cuándo evaluar otro plan' in text for text in guidance))
         next(box for box in app.selectbox if box.label == 'Actividad 1').select(
             'Videos cortos en redes (Reels o TikTok)').run()
-        self.assertEqual(app.metric[0].value, '3 Mbps')
+        self.assertEqual(self.details(app).loc['Descarga', 'Demanda'], '3 Mbps')
         self.assertTrue(any('Hay capacidad para ver videos cortos' in item.value for item in app.markdown))
         self.assertFalse(app.exception)
 
@@ -154,13 +152,13 @@ class AppTests(unittest.TestCase):
         app.session_state['last_speed']=dict(download=42.0, upload=7.0, latency=20.0, jitter=2.0, id='sample', timestamp='2026-11-04T00:00:00Z')
         app.session_state['speed_history']=[]
         app.run()
-        self.assertEqual(app.metric[1].value, '42 Mbps')
-        self.assertTrue(any('Subida de referencia: **7 Mbps**' in item.value for item in app.markdown))
+        self.assertEqual(self.details(app).loc['Descarga', 'Capacidad'], '42 Mbps')
+        self.assertEqual(self.details(app).loc['Subida', 'Capacidad'], '7 Mbps')
         app.toggle(key='manual_reference').set_value(True).run()
         app.selectbox(key='plan').select('500 Mbps').run()
-        self.assertEqual(app.metric[1].value, '500 Mbps')
+        self.assertEqual(self.details(app).loc['Descarga', 'Capacidad'], '500 Mbps')
         app.toggle(key='manual_reference').set_value(False).run()
-        self.assertEqual(app.metric[1].value, '42 Mbps')
+        self.assertEqual(self.details(app).loc['Descarga', 'Capacidad'], '42 Mbps')
         app.toggle(key='manual_reference').set_value(True).run()
         self.assertEqual(app.selectbox(key='plan').value, '500 Mbps')
         self.assertFalse(app.exception)

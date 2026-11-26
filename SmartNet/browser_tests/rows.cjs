@@ -93,9 +93,11 @@ async function verify(page) {
       await page.waitForFunction(({ n, count }) => document.querySelector('input[aria-label="Cantidad ' + n + '"]')?.value === String(count), { n, count });
     }
   };
-  const metric = async (label, value) => {
+  const detailRow = async (label, values) => {
     await goTo(3);
-    await page.getByTestId('stMetric').filter({ hasText: label }).getByText(value, { exact: true }).waitFor({ state: 'attached' });
+    const row = page.locator('.st-key-result_details').getByRole('row', { includeHidden: true })
+      .filter({ has: page.getByText(label, { exact: true }) });
+    for (const value of values) await row.getByText(value, { exact: true }).waitFor({ state: 'attached' });
   };
   const preset = 'Prueba un ejemplo o arma tu casa';
   const afternoon = 'Una tarde en casa';
@@ -114,9 +116,9 @@ async function verify(page) {
 
   await choose(preset, classroom);
   await checkRows(saturatedRows);
-  await metric('Capacidad del plan', '100 Mbps');
-  await metric('Demanda total del ejemplo', '114 Mbps');
-  await metric('Uso estimado del plan', '114.0%');
+  await detailRow('Plan', ['114 Mbps', '100 Mbps', '114,0%']);
+  await detailRow('2,4 GHz', ['58 Mbps', '40 Mbps', '145,0%']);
+  await detailRow('5 GHz', ['56 Mbps', '100 Mbps', '56,0%']);
   const overview = page.locator('.st-key-family_summary').last();
   await overview.getByRole('img', { name: /^Uso del plan: 114,0%/ }).waitFor();
   await overview.getByRole('img', { name: /^2,4 GHz: 145,0%/ }).waitFor();
@@ -127,21 +129,18 @@ async function verify(page) {
   await choose('¿Cuántos megas tiene tu plan?', '20 Mbps');
   await goTo(3);
   const detail = page.getByText('Detalle y números', { exact: true }).last();
-  if (!await page.getByText('Uso estimado de descarga',{exact:true}).isVisible()) await detail.click();
-  await metric('Descarga que necesitan los equipos', '10.5 Mbps');
-  await metric('Uso estimado de descarga', '52.5%');
+  if (!await page.locator('.st-key-result_details').isVisible()) await detail.click();
+  await detailRow('Descarga', ['10,5 Mbps', '20 Mbps', '52,5%']);
   await choose('¿Cuántos megas tiene tu plan?', 'Ingresar otra velocidad');
   await setNumber('Descarga de referencia (Mbps)', 10);
-  await metric('Uso estimado de descarga', '105.0%');
+  await detailRow('Descarga', ['105,0%']);
 
   await choose(preset, cameras);
   await checkRows(presets[cameras]);
   await openManual();
   await page.getByText('Conozco mi velocidad de subida', { exact: true }).click();
   await setNumber('Subida de referencia (Mbps)', 5);
-  const numbers = page.getByTestId('stExpander').filter({ hasText: 'Detalle y números' });
-  await numbers.getByText('8.25 Mbps', { exact: true }).waitFor({ state: 'attached' });
-  await numbers.getByText('165.0%', { exact: true }).waitFor({ state: 'attached' });
+  await detailRow('Subida', ['8,25 Mbps', '5 Mbps', '165,0%']);
   await choose('Conexión del grupo 2', 'Cable de red');
   await choose('Conexión del grupo 1', '5 GHz');
   const original = presets[cameras].map((row, i) =>
@@ -151,9 +150,9 @@ async function verify(page) {
   await goTo(3);
   await solution.click();
   const moveDetails = page.getByTestId('stExpander').filter({hasText:'Detalle y números'});
-  await moveDetails.getByText('Grupo 1 · 📷 Cámara de seguridad: 5 GHz → 2,4 GHz', { exact: true })
+  await moveDetails.getByText('Grupo 1 · 📷 Cámara de seguridad · 5 GHz → 2,4 GHz', { exact: true })
     .waitFor({ state: 'attached' });
-  await moveDetails.getByText('Grupo 3 · 📺 TV Box / decodificador: No sé la banda → 5 GHz', { exact: true })
+  await moveDetails.getByText('Grupo 3 · 📺 TV Box / decodificador · No sé la banda → 5 GHz', { exact: true })
     .waitFor({ state: 'attached' });
   assert.equal(await moveDetails.getByText(/^Grupo 2 /).count(), 0);
   await improvement.getByRole('img', { name: 'Antes: faltan datos · Con la propuesta: 10.9%', exact: true }).waitFor();
@@ -180,7 +179,7 @@ async function verify(page) {
   await checkRows([]);
   await choose(preset, afternoon);
   await checkRows(presets[afternoon]);
-  await metric('Uso estimado de descarga', '105.0%');
+  await detailRow('Descarga', ['105,0%']);
   assert.equal(await page.getByTestId('stException').count(), 0);
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
 }
