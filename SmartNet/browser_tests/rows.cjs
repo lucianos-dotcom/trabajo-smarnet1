@@ -13,11 +13,10 @@ const hd = 'Ver videos o series en HD';
 const cloud = 'Cámara transmitiendo a la nube';
 const unknown = 'No sé la banda';
 
-const symmetric = 'Wi-Fi saturado · Plan simétrico 300/300 Mbps';
-const asymmetric = 'Wi-Fi saturado · Plan asimétrico 300/10 Mbps';
+const classroom = 'Casa de 200 Mbps · Wi-Fi saturado';
 const saturatedRows = [
-  [camera, cloud, 2, '2,4 GHz'], [phone, call, 1, '2,4 GHz'], ['📟 Tablet', hd, 3, '2,4 GHz'],
-  [tv, 'Ver videos o series en 4K', 1, '5 GHz'], [pc, 'Descargar juegos o archivos', 1, '5 GHz'],
+  [camera, cloud, 2, '2,4 GHz'], [phone, call, 1, '2,4 GHz'], [phone, hd, 3, '2,4 GHz'],
+  [tv, 'Ver videos o series en 4K', 1, '5 GHz'], [pc, 'Descargar juegos o archivos', 1, 'Cable de red'],
 ];
 
 const presets = {
@@ -32,8 +31,7 @@ const presets = {
     ['📺 TV Box / decodificador', hd, 1], ['🔊 Parlante inteligente', 'Escuchar música', 1],
   ],
   'Empezar desde cero': [],
-  [symmetric]: saturatedRows,
-  [asymmetric]: saturatedRows,
+  [classroom]: saturatedRows,
 };
 
 async function verify(page) {
@@ -112,15 +110,15 @@ async function verify(page) {
     await checkRows(presets[name]);
   }
 
-  for (const [scenario, upload, usage] of [[symmetric, 300, '2.1%'], [asymmetric, 10, '64.0%']]) {
-    await choose(preset, scenario);
-    await checkRows(saturatedRows);
-    await goTo(3);
-    const overview = page.locator('.st-key-family_summary').last();
-    await overview.getByText(/Necesitan atención:.*2,4 GHz.*5 GHz/).waitFor();
-    await page.getByTestId('stExpander').filter({hasText:'Detalle y números'})
-      .getByText(usage,{exact:true}).waitFor({state:'attached'});
-  }
+  await choose(preset, classroom);
+  await checkRows(saturatedRows);
+  await metric('Velocidad de descarga de referencia', '200 Mbps');
+  const overview = page.locator('.st-key-family_summary').last();
+  await overview.getByText('Necesitan atención: 2,4 GHz', { exact: true }).waitFor();
+  await overview.getByRole('img', { name: /^2,4 GHz: 112,5%/ }).waitFor();
+  await overview.getByRole('img', { name: /^5 GHz: 35,9%/ }).waitFor();
+  await page.getByTestId('stExpander').filter({ hasText: 'Detalle y números' })
+    .getByText('3.2%', { exact: true }).waitFor({ state: 'attached' });
 
   await choose(preset, afternoon);
   await checkRows(presets[afternoon]);
@@ -151,13 +149,10 @@ async function verify(page) {
   await goTo(3);
   await solution.click();
   const moveDetails = page.getByTestId('stExpander').filter({hasText:'Detalle y números'});
-  const movesHeading = moveDetails.getByText('Equipos que cambiarían de banda',{exact:true});
-  await movesHeading.waitFor({state:'attached'});
-  if (!await movesHeading.isVisible()) {
-    await page.getByText('Detalle y números',{exact:true}).last().click();
-  }
-  await moveDetails.getByText('Grupo 1 · 📷 Cámara de seguridad: 5 GHz → 2,4 GHz', { exact: true }).waitFor();
-  await moveDetails.getByText('Grupo 3 · 📺 TV Box / decodificador: No sé la banda → 5 GHz', { exact: true }).waitFor();
+  await moveDetails.getByText('Grupo 1 · 📷 Cámara de seguridad: 5 GHz → 2,4 GHz', { exact: true })
+    .waitFor({ state: 'attached' });
+  await moveDetails.getByText('Grupo 3 · 📺 TV Box / decodificador: No sé la banda → 5 GHz', { exact: true })
+    .waitFor({ state: 'attached' });
   assert.equal(await moveDetails.getByText(/^Grupo 2 /).count(), 0);
   await improvement.getByRole('img', { name: 'Antes: faltan datos · Con la propuesta: 10.9%', exact: true }).waitFor();
   await improvement.getByRole('img', { name: 'Antes: faltan datos · Con la propuesta: 1.7%', exact: true }).waitFor();

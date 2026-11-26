@@ -20,11 +20,10 @@ styles = Path(__file__).with_name('styles.css').read_text(encoding='utf-8')
 st.markdown(f'<style>{styles}</style>', unsafe_allow_html=True)
 st.session_state.setdefault('row_revision', 0)
 DEFAULT_WIFI_CAPS = dict(zip(BANDS[:2], (80.0, 300.0)))
-CLASSROOM_UPLOADS = {
-    'Wi-Fi saturado · Plan simétrico 300/300 Mbps': 300.0,
-    'Wi-Fi saturado · Plan asimétrico 300/10 Mbps': 10.0,
-}
-CLASSROOM_GROUPS = [(4, 6, 2), (0, 2, 1), (5, 1, 3), (2, 3, 1), (1, 5, 1)]
+CLASSROOM_PRESET = 'Casa de 200 Mbps · Wi-Fi saturado'
+CLASSROOM_SPEED = 200.0
+CLASSROOM_GROUPS = [(4, 6, 2), (0, 2, 1), (0, 1, 3), (2, 3, 1), (1, 5, 1)]
+CLASSROOM_BANDS = [BANDS[0], BANDS[0], BANDS[0], BANDS[1], BANDS[2]]
 # Streamlit can retain the previous household module across a code update.
 SCENARIOS = {
     name: groups for name, groups in PRESETS.items()
@@ -36,8 +35,7 @@ SOCIAL_MESSAGES = 'Redes sociales, WhatsApp y navegación'
 ACTIVITY_OPTIONS = [ACTIVITIES[0], SHORT_VIDEO_ACTIVITY] + [
     activity for activity in ACTIVITIES[1:] if activity != SHORT_VIDEO_ACTIVITY
 ]
-SCENARIOS = {SOCIAL_PRESET: [(0, 0, 1)], **SCENARIOS}
-SCENARIOS.update(dict.fromkeys(CLASSROOM_UPLOADS, CLASSROOM_GROUPS))
+SCENARIOS = {CLASSROOM_PRESET: CLASSROOM_GROUPS, SOCIAL_PRESET: [(0, 0, 1)], **SCENARIOS}
 CLASSROOM_WIFI_CAPS = dict(zip(BANDS[:2], (20.0, 70.0)))
 
 def row_key(field, i):
@@ -55,9 +53,7 @@ def load_preset():
     st.session_state.still_slow = False
     preset = st.session_state.preset
     groups = SCENARIOS[preset]
-    bands = [BANDS[3]] * len(groups)
-    if preset in CLASSROOM_UPLOADS:
-        bands = [BANDS[0], BANDS[0], BANDS[0], BANDS[1], BANDS[1]]
+    bands = CLASSROOM_BANDS if preset == CLASSROOM_PRESET else [BANDS[3]] * len(groups)
     replace_rows([
         dict(device=DEVICES[d], activity=ACTIVITIES[a], count=n, band=band)
         for (d, a, n), band in zip(groups, bands, strict=True)
@@ -307,7 +303,7 @@ def set_presentation_step(step):
     st.session_state.presentation_step = step
 
 
-if 'rows' not in st.session_state:
+if 'rows' not in st.session_state or st.session_state.get('preset') not in SCENARIOS:
     st.session_state.preset = 'Una tarde en casa'
     load_preset()
 
@@ -346,7 +342,7 @@ with st.container(border=True, key='presentation_nav'):
 
 with st.container(key='presentation_frame'):
     with st.container(key='page_connection'):
-        classroom_demo = st.session_state.preset in CLASSROOM_UPLOADS
+        classroom_demo = st.session_state.preset == CLASSROOM_PRESET
         with st.container(border=True):
             st.markdown('#### 📶 Test de velocidad')
             speed_overview = st.container(key='speed_overview')
@@ -407,7 +403,7 @@ with st.container(key='presentation_frame'):
                     st.session_state[key] = st.session_state[key]
             measured = st.session_state.get('last_speed')
             if classroom_demo:
-                capacity, upload, known = 300.0, CLASSROOM_UPLOADS[st.session_state.preset], True
+                capacity, upload, known = CLASSROOM_SPEED, CLASSROOM_SPEED, True
                 reference_source = 'Plan del ejemplo'
                 st.write(f"Plan del ejemplo: **{capacity:g} Mbps de descarga** y **{upload:g} Mbps de subida**.")
             elif valid_result(measured):
@@ -428,8 +424,8 @@ with st.container(key='presentation_frame'):
         with st.container(key=f'scenario_{st.session_state.row_revision}'):
             custom_scenario = st.session_state.preset == 'Empezar desde cero'
             if classroom_demo:
-                st.write('Dos cámaras, una videollamada y tres tablets comparten 2,4 GHz. '
-                         'En 5 GHz, un televisor reproduce una serie en 4K mientras un notebook descarga un juego.')
+                st.write('Dos cámaras, un celular en videollamada y otros tres viendo videos en HD comparten 2,4 GHz. '
+                         'Un televisor reproduce una serie en 4K por 5 GHz y un notebook conectado por cable descarga un juego.')
             if st.session_state.preset == SOCIAL_PRESET:
                 st.caption('El celular ya está agregado. Si ves Reels o TikTok, elige «Videos cortos en redes» como actividad.')
             if not custom_scenario:

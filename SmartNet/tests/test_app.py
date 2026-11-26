@@ -58,30 +58,37 @@ class AppTests(unittest.TestCase):
         self.assertFalse(app.latex)
         self.assertFalse(app.exception)
 
-    def test_classroom_plans(self):
+    def test_classroom_plan_and_band_improvement(self):
         app = self.app()
         app.toggle(key='manual_reference').set_value(True).run()
         app.selectbox(key='plan').select('500 Mbps').run()
-        for plan, upload, usage in [
-            ('Wi-Fi saturado · Plan simétrico 300/300 Mbps', 300, '2.1%'),
-            ('Wi-Fi saturado · Plan asimétrico 300/10 Mbps', 10, '64.0%'),
-        ]:
-            app.selectbox(key='preset').select(plan).run()
-            self.assertEqual(app.metric[1].value, '300 Mbps')
-            text = [item.value for item in app.markdown]
-            self.assertIn(f'Subida del ejemplo: **{upload} Mbps** · uso estimado: **{usage}**.', text)
-            self.assertTrue(any(line.startswith('**2,4 GHz.**') and '**112.5%**' in line for line in text))
-            self.assertTrue(any(line.startswith('**5 GHz.**') and '**108.0%**' in line for line in text))
-            self.assertTrue(any('El plan alcanza para enviar y recibir' in line for line in text))
-            self.assertTrue(any('**22.5 Mbps**' in line and '**20 Mbps**' in line for line in text))
-            self.assertTrue(any('**75.6 Mbps**' in line and '**70 Mbps**' in line for line in text))
-            self.assertFalse(app.exception)
+        selector = app.selectbox(key='preset')
+        for retired in ('Wi-Fi saturado · Plan simétrico 300/300 Mbps',
+                        'Wi-Fi saturado · Plan asimétrico 300/10 Mbps'):
+            self.assertNotIn(retired, selector.options)
+        selector.select('Casa de 200 Mbps · Wi-Fi saturado').run()
+        self.assertEqual(app.metric[1].value, '200 Mbps')
+        text = [item.value for item in app.markdown]
+        self.assertIn('Subida del ejemplo: **200 Mbps** · uso estimado: **3.2%**.', text)
+        self.assertTrue(any(line.startswith('**2,4 GHz.**') and '**112.5%**' in line for line in text))
+        self.assertTrue(any(line.startswith('**5 GHz.**') and '**35.9%**' in line for line in text))
+        self.assertTrue(any('El plan alcanza para enviar y recibir' in line for line in text))
+        self.assertTrue(any('**22.5 Mbps**' in line and '**20 Mbps**' in line for line in text))
+        self.assertTrue(any('**25.1 Mbps**' in line and '**70 Mbps**' in line for line in text))
+        original = app.session_state['rows']
+        app.button(key='try_bands').click().run()
+        self.assertTrue(any('112.5% · Con la propuesta: 21.0%' in item.value for item in app.markdown))
+        self.assertTrue(any('35.9% · Con la propuesta: 62.0%' in item.value for item in app.markdown))
+        self.assertTrue(any('El Wi-Fi alcanza con estos cambios' in item.value for item in app.success))
+        self.assertEqual(app.session_state['rows'], original)
+        self.assertFalse(app.exception)
         app.selectbox(key='preset').select('Una tarde en casa').run()
         self.assertEqual(app.selectbox(key='plan').value, '500 Mbps')
 
     def test_classroom_combines_improvements(self):
         app = self.app()
-        app.selectbox(key='preset').select('Wi-Fi saturado · Plan asimétrico 300/10 Mbps').run()
+        app.selectbox(key='preset').select('Casa de 200 Mbps · Wi-Fi saturado').run()
+        next(box for box in app.selectbox if box.label == 'Conexión del grupo 5').select('5 GHz').run()
         original = app.session_state['rows']
         app.button(key='try_bands').click().run()
         self.assertTrue(any('134.1%' in item.value for item in app.markdown))
