@@ -1,3 +1,4 @@
+from functools import partial
 from importlib import reload
 from math import isclose
 from pathlib import Path
@@ -7,9 +8,10 @@ import streamlit as st
 import household
 
 # Streamlit Cloud may keep the previous catalog loaded after updating the app.
-if not hasattr(household, 'SHORT_VIDEO_ACTIVITY'):
+if not hasattr(household, 'CLASSROOM_RATES'):
     reload(household)
 from household import (ACTIVITIES, DEVICES, PRESETS, BANDS, SHORT_VIDEO_ACTIVITY,
+                       CLASSROOM_RATES, CLASSROOM_UPLOAD_RATES,
                        network_summary, improve, suggest_bands)
 from report_image import simulation_png
 from speed_test import render_speed_test, valid_result
@@ -21,9 +23,9 @@ st.markdown(f'<style>{styles}</style>', unsafe_allow_html=True)
 st.session_state.setdefault('row_revision', 0)
 DEFAULT_WIFI_CAPS = dict(zip(BANDS[:2], (80.0, 300.0)))
 CLASSROOM_SPEED = 100.0
-CLASSROOM_PRESET = f'Casa de {CLASSROOM_SPEED:g} Mbps · Wi-Fi saturado'
-CLASSROOM_GROUPS = [(4, 6, 2), (0, 2, 1), (0, 1, 3), (2, 3, 1), (1, 5, 1)]
-CLASSROOM_BANDS = [BANDS[0], BANDS[0], BANDS[0], BANDS[1], BANDS[2]]
+CLASSROOM_PRESET = f'Casa de {CLASSROOM_SPEED:g} Mbps · Caso de clase'
+CLASSROOM_GROUPS = [(4, 6, 7), (0, 11, 2), (2, 1, 4), (6, 3, 3)]
+CLASSROOM_BANDS = [BANDS[0], BANDS[0], BANDS[1], BANDS[1]]
 # Streamlit can retain the previous household module across a code update.
 SCENARIOS = {
     name: groups for name, groups in PRESETS.items()
@@ -36,7 +38,13 @@ ACTIVITY_OPTIONS = [ACTIVITIES[0], SHORT_VIDEO_ACTIVITY] + [
     activity for activity in ACTIVITIES[1:] if activity != SHORT_VIDEO_ACTIVITY
 ]
 SCENARIOS = {CLASSROOM_PRESET: CLASSROOM_GROUPS, SOCIAL_PRESET: [(0, 0, 1)], **SCENARIOS}
-CLASSROOM_WIFI_CAPS = dict(zip(BANDS[:2], (20.0, 70.0)))
+CLASSROOM_WIFI_CAPS = dict(zip(BANDS[:2], (40.0, 100.0)))
+
+def activity_label(activity, classroom_demo):
+    label = SOCIAL_MESSAGES if activity == ACTIVITIES[0] else activity
+    if classroom_demo:
+        return f'{label} · {CLASSROOM_RATES[ACTIVITIES.index(activity)]:g} Mbps por equipo'
+    return label
 
 def row_key(field, i):
     return f'{field}_{st.session_state.row_revision}_{i}'
@@ -170,14 +178,14 @@ def show_change_status(before, after, unit):
     st.markdown(f'<span class="smartnet-change-tag {status}">{label}</span>', unsafe_allow_html=True)
 
 
-def comparison_values(initial, final, known, compare_wifi):
+def comparison_values(initial, final, known, compare_wifi, labels):
     unknown_initial = bool(initial['bands'][BANDS[3]]['matrix'].sum())
     unknown_final = bool(final['bands'][BANDS[3]]['matrix'].sum())
     result = []
     for before, after in zip(checks(initial, known, compare_wifi), checks(final, known, compare_wifi)):
         part = before['key']
         is_band = part in BANDS[:2]
-        title = {'download': 'Descarga del plan', 'upload': 'Subida del plan'}.get(part, part)
+        title = labels.get(part, part)
         before_usage = None if is_band and unknown_initial else before['usage']
         after_usage = None if is_band and unknown_final else after['usage']
         result.append((title, before_usage, after_usage))
@@ -190,7 +198,7 @@ def wifi_usage(report):
     return {band: report['bands'][band]['usage'] for band in BANDS[:2]}
 
 
-def recommend_wifi_step(rows, current, capacity, upload, caps, pause, lower, move):
+def recommend_wifi_step(rows, current, summarize, caps, pause, lower, move):
     overloaded = [band for band in BANDS[:2] if (current['bands'][band]['usage'] or 0) > 100]
     if not overloaded:
         return None, None
@@ -222,7 +230,7 @@ def recommend_wifi_step(rows, current, capacity, upload, caps, pause, lower, mov
         candidate = improve(rows, try_pause, try_hd)
         if try_move:
             candidate = suggest_bands(candidate)
-        result = wifi_usage(network_summary(candidate, capacity, upload, caps))
+        result = wifi_usage(summarize(candidate, band_capacities=caps))
         if result and rank(result) < best:
             best = rank(result)
             recommendation = action_key, action, result
@@ -235,8 +243,7 @@ def recommend_wifi_step(rows, current, capacity, upload, caps, pause, lower, mov
     return None, practical
 
 
-def show_result_bars(items, incomplete_bands):
-    labels = {'download': 'Descarga del plan', 'upload': 'Subida del plan'}
+def show_result_bars(items, incomplete_bands, labels):
     readings = [
         (labels.get(item['key'], item['key']),
          None if incomplete_bands and item['key'] in BANDS[:2] else item['usage'])
@@ -403,9 +410,9 @@ with st.container(key='presentation_frame'):
                     st.session_state[key] = st.session_state[key]
             measured = st.session_state.get('last_speed')
             if classroom_demo:
-                capacity, upload, known = CLASSROOM_SPEED, CLASSROOM_SPEED, True
-                reference_source = 'Plan del ejemplo'
-                st.write(f"Plan del ejemplo: **{capacity:g} Mbps de descarga** y **{upload:g} Mbps de subida**.")
+                capacity, upload, known = CLASSROOM_SPEED, None, True
+                reference_source = 'Plan y consumos del ejemplo de clase'
+                st.write(f"Capacidad del plan del ejemplo: **{capacity:g} Mbps**.")
             elif valid_result(measured):
                 capacity, upload, known = float(measured['download']), float(measured['upload']), True
                 reference_source = 'Medición del test de SmartNet'
@@ -424,8 +431,8 @@ with st.container(key='presentation_frame'):
         with st.container(key=f'scenario_{st.session_state.row_revision}'):
             custom_scenario = st.session_state.preset == 'Empezar desde cero'
             if classroom_demo:
-                st.write('Dos cámaras, un celular en videollamada y otros tres viendo videos en HD comparten 2,4 GHz. '
-                         'Un televisor reproduce una serie en 4K por 5 GHz y un notebook conectado por cable descarga un juego.')
+                st.write('Siete cámaras, dos celulares, cuatro Smart TV y tres TV Box. '
+                         'Los consumos por equipo vienen del ejemplo de la presentación.')
             if st.session_state.preset == SOCIAL_PRESET:
                 st.caption('El celular ya está agregado. Si ves Reels o TikTok, elige «Videos cortos en redes» como actividad.')
             if not custom_scenario:
@@ -449,7 +456,7 @@ with st.container(key='presentation_frame'):
                     a,b,c,d = st.columns([3,4,2,3])
                     device = a.selectbox(f'Equipo {i+1}', DEVICES, index=DEVICES.index(row['device']), key=row_key('device', i), on_change=choose_device, args=(i,))
                     activity = b.selectbox(f'Actividad {i+1}', ACTIVITY_OPTIONS, index=ACTIVITY_OPTIONS.index(row['activity']), key=row_key('activity', i),
-                                           format_func=lambda value: SOCIAL_MESSAGES if value == ACTIVITIES[0] else value)
+                                           format_func=lambda value: activity_label(value, classroom_demo))
                     count = c.number_input(f'Cantidad {i+1}', min_value=0, max_value=100, value=row['count'], step=1, key=row_key('count', i))
                     band = d.selectbox(f'Conexión del grupo {i+1}', BANDS, index=BANDS.index(row.get('band',BANDS[3])), key=row_key('band', i))
                     st.button('Quitar este grupo', key=row_key('remove', i), on_click=remove_row, args=(i,))
@@ -464,7 +471,10 @@ with st.container(key='presentation_frame'):
         band_caps = default_band_caps if model_wifi else {}
 
     with st.container(key='page_result'):
-        summary = network_summary(rows, capacity, upload, band_caps)
+        summarize = partial(network_summary, download=capacity, upload=upload)
+        if classroom_demo:
+            summarize = partial(summarize, download_rates=CLASSROOM_RATES, upload_rates=CLASSROOM_UPLOAD_RATES)
+        summary = summarize(rows, band_capacities=band_caps)
         items = checks(summary, known, model_wifi)
         incomplete_bands = bool(model_wifi and summary['bands'][BANDS[3]]['matrix'].sum())
         active = bool(summary['matrix'].sum())
@@ -473,7 +483,10 @@ with st.container(key='presentation_frame'):
         total_equipment = sum(row['count'] for row in rows)
         download_note = 'descarga' if known else 'descarga hipotética'
         upload_note = f'{upload:g} Mbps de subida' if upload is not None else 'subida por confirmar'
-        parts = {'download': 'descarga del plan', 'upload': 'subida del plan'}
+        parts = {'download': 'el plan de internet' if classroom_demo else 'descarga del plan', 'upload': 'subida del plan'}
+        labels = {'download': 'Uso del plan' if classroom_demo else 'Descarga del plan', 'upload': 'Subida del plan'}
+        connection = (f'{capacity:g} Mbps de capacidad' if classroom_demo
+                      else f'{capacity:g} Mbps de {download_note} · {upload_note}')
         overdemand = [parts.get(item['key'], item['key']) for item in items if item['state'] == 'over']
         active_rows = [row for row in rows if row['count']]
         social_only = active and all(
@@ -500,6 +513,9 @@ with st.container(key='presentation_frame'):
                     else:
                         st.markdown('### La velocidad alcanza para tus redes')
                         st.write(f'Hay capacidad para {usage} según la referencia que estás usando.')
+                elif classroom_demo and items[0]['state'] == 'over':
+                    st.markdown('### El plan de internet se queda corto')
+                    st.write(f"La casa necesita **{summary['down']:g} Mbps** y el plan ofrece **{capacity:g} Mbps**.")
                 elif any(item['state'] == 'over' for item in items[2:]) and all(
                     item['state'] in ('good', 'tight') for item in items[:2]
                 ):
@@ -509,7 +525,8 @@ with st.container(key='presentation_frame'):
                     st.markdown(f'### {headline}')
                     st.write(explanation)
                 if active and not all(item['state'] == 'unknown' for item in items):
-                    show_result_bars(items, incomplete_bands)
+                    readings = [item for item in items if not classroom_demo or item['key'] != 'upload']
+                    show_result_bars(readings, incomplete_bands, labels)
                 if overdemand:
                     st.caption('Necesitan atención: ' + ' · '.join(overdemand))
 
@@ -545,7 +562,7 @@ with st.container(key='presentation_frame'):
             testing = pause or lower or band_proposal
             compare_wifi = model_wifi or band_proposal
             preview_caps = default_band_caps if compare_wifi else {}
-            baseline = network_summary(rows, capacity, upload, preview_caps) if compare_wifi and not model_wifi else summary
+            baseline = summarize(rows, band_capacities=preview_caps) if compare_wifi and not model_wifi else summary
             proposed = improve(rows, pause, lower) if testing else rows
             if band_proposal:
                 proposed = suggest_bands(proposed)
@@ -554,12 +571,14 @@ with st.container(key='presentation_frame'):
                 for i, (before, after) in enumerate(zip(rows, proposed), start=1)
                 if after['count'] and before['band'] != after['band']
             ]
-            improved = network_summary(proposed, capacity, upload, preview_caps) if testing else baseline
+            improved = summarize(proposed, band_capacities=preview_caps) if testing else baseline
             changed = [row for row in proposed if row['count']] != [row for row in rows if row['count']]
-            comparisons = comparison_values(baseline, improved, known, compare_wifi)
+            comparisons = comparison_values(baseline, improved, known, compare_wifi, labels)
             plan_limits = [
                 direction for direction, usage in (
-                    ('descarga', improved['down_usage'] if known else None), ('subida', improved['up_usage'])
+                    ('capacidad del plan' if classroom_demo else 'descarga',
+                     improved['down_usage'] if known else None),
+                    ('subida', improved['up_usage'])
                 ) if usage is not None and usage > 100
             ]
             wifi_limited = any((improved['bands'][band]['usage'] or 0) > 100 for band in BANDS[:2])
@@ -594,10 +613,12 @@ with st.container(key='presentation_frame'):
                                 show_change_status(before, after, unit)
 
             recommended, advice = recommend_wifi_step(
-                rows, improved, capacity, upload, preview_caps, pause, lower, band_proposal,
+                rows, improved, summarize, preview_caps, pause, lower, band_proposal,
             )
             if not advice and not testing and items[0]['state'] == 'over' and has_download:
                 recommended, advice = 'pause', 'Deja las descargas grandes para después.'
+            elif not advice and classroom_demo and improved['down_usage'] > 100 and has_4k and not lower:
+                recommended, advice = 'hd', 'Cambia los TV Box de 4K a HD para reducir la demanda del plan.'
             elif not advice and (improved['up_usage'] or 0) > 100:
                 advice = 'Deja los respaldos de archivos para después y revisa los equipos que están enviando datos.'
             with recommendation_slot.container():
@@ -625,26 +646,27 @@ with st.container(key='presentation_frame'):
         with st.expander('Detalle y números'):
             with st.container(key='slide_context'):
                 st.markdown(f"**{st.session_state.preset}**")
-                st.caption(f'{total_equipment} equipos · {capacity:g} Mbps de {download_note} · {upload_note}')
+                st.caption(f'{total_equipment} equipos · {connection}')
                 st.caption(f'Referencia: {reference_source}.')
 
             st.caption('Por encima del 100%, las actividades juntas necesitan más capacidad de la disponible.')
             st.markdown('#### Plan de internet')
             a, b, c = st.columns(3)
-            a.metric('Descarga que necesitan los equipos', f"{summary['down']:g} Mbps")
-            b.metric('Velocidad de descarga de referencia', f'{capacity:g} Mbps')
-            c.metric('Uso estimado de descarga', f"{summary['down_usage']:.1f}%")
+            a.metric('Demanda total del ejemplo' if classroom_demo else 'Descarga que necesitan los equipos',
+                     f"{summary['down']:g} Mbps")
+            b.metric('Capacidad del plan' if classroom_demo else 'Velocidad de descarga de referencia', f'{capacity:g} Mbps')
+            c.metric('Uso estimado del plan' if classroom_demo else 'Uso estimado de descarga', f"{summary['down_usage']:.1f}%")
             if not known:
                 st.caption('La descarga de referencia es hipotética. Sirve para probar el escenario.')
-            st.write(f"**Subida.** Tus equipos necesitan enviar **{summary['up']:g} Mbps** a internet.")
-            if upload is not None:
-                label = 'Subida del ejemplo' if classroom_demo else 'Subida de referencia'
-                st.write(f"{label}: **{upload:g} Mbps** · uso estimado: **{summary['up_usage']:.1f}%**.")
-            else:
-                st.write('Subida de referencia: pendiente. Falta ese dato para saber si alcanza.')
+            if not classroom_demo:
+                st.write(f"**Subida.** Tus equipos necesitan enviar **{summary['up']:g} Mbps** a internet.")
+                if upload is not None:
+                    st.write(f"Subida de referencia: **{upload:g} Mbps** · uso estimado: **{summary['up_usage']:.1f}%**.")
+                else:
+                    st.write('Subida de referencia: pendiente. Falta ese dato para saber si alcanza.')
             if model_wifi:
                 st.markdown('#### Wi-Fi de la casa')
-                st.caption('Se suma lo que los equipos envían y reciben en cada banda. '
+                st.caption('Se suma la demanda de los equipos en cada banda. '
                            'Las capacidades de las bandas son valores de referencia.')
                 for band in BANDS[:2]:
                     data = summary['bands'][band]
@@ -654,7 +676,8 @@ with st.container(key='presentation_frame'):
 
             extra_charts = [reading for reading in changes_to_chart if reading not in visible_charts]
             if changed and not isclose(baseline['down'], improved['down']):
-                st.metric('Demanda de descarga con estos cambios', f"{improved['down']:g} Mbps",
+                label = 'Demanda total con estos cambios' if classroom_demo else 'Demanda de descarga con estos cambios'
+                st.metric(label, f"{improved['down']:g} Mbps",
                           delta=f"{improved['down'] - baseline['down']:g} Mbps", delta_color='inverse')
             if extra_charts:
                 st.markdown('#### Otros cambios')
@@ -681,9 +704,9 @@ with st.container(key='presentation_frame'):
                 f'Grupo {i} · {device.split(" ", 1)[1]}: {old_band} a {new_band}'
                 for i, device, old_band, new_band in changes
             ]
-            connection = f'{capacity:g} Mbps de {download_note} · {upload_note}'
+            report_comparisons = [row for row in comparisons if not classroom_demo or row[0] != labels['upload']]
             image = simulation_png(st.session_state.preset, total_equipment, connection, actions,
-                                   comparisons, report_changes)
+                                   report_comparisons, report_changes)
             st.download_button('Descargar resumen como imagen', image, 'smartnet-resumen.png',
                                'image/png', on_click='ignore')
 

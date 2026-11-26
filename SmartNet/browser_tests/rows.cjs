@@ -13,10 +13,12 @@ const hd = 'Ver videos o series en HD';
 const cloud = 'Cámara transmitiendo a la nube';
 const unknown = 'No sé la banda';
 
-const classroom = 'Casa de 100 Mbps · Wi-Fi saturado';
+const classroom = 'Casa de 100 Mbps · Caso de clase';
 const saturatedRows = [
-  [camera, cloud, 2, '2,4 GHz'], [phone, call, 1, '2,4 GHz'], [phone, hd, 3, '2,4 GHz'],
-  [tv, 'Ver videos o series en 4K', 1, '5 GHz'], [pc, 'Descargar juegos o archivos', 1, 'Cable de red'],
+  [camera, cloud + ' · 4 Mbps por equipo', 7, '2,4 GHz'],
+  [phone, 'Videos cortos en redes (Reels o TikTok) · 15 Mbps por equipo', 2, '2,4 GHz'],
+  [tv, hd + ' · 5 Mbps por equipo', 4, '5 GHz'],
+  ['📺 TV Box / decodificador', 'Ver videos o series en 4K · 12 Mbps por equipo', 3, '5 GHz'],
 ];
 
 const presets = {
@@ -112,14 +114,13 @@ async function verify(page) {
 
   await choose(preset, classroom);
   await checkRows(saturatedRows);
-  await metric('Velocidad de descarga de referencia', '100 Mbps');
-  await metric('Uso estimado de descarga', '91.7%');
+  await metric('Capacidad del plan', '100 Mbps');
+  await metric('Demanda total del ejemplo', '114 Mbps');
+  await metric('Uso estimado del plan', '114.0%');
   const overview = page.locator('.st-key-family_summary').last();
-  await overview.getByText('Necesitan atención: 2,4 GHz', { exact: true }).waitFor();
-  await overview.getByRole('img', { name: /^2,4 GHz: 112,5%/ }).waitFor();
-  await overview.getByRole('img', { name: /^5 GHz: 35,9%/ }).waitFor();
-  await page.getByTestId('stExpander').filter({ hasText: 'Detalle y números' })
-    .getByText('6.4%', { exact: true }).waitFor({ state: 'attached' });
+  await overview.getByRole('img', { name: /^Uso del plan: 114,0%/ }).waitFor();
+  await overview.getByRole('img', { name: /^2,4 GHz: 145,0%/ }).waitFor();
+  await overview.getByRole('img', { name: /^5 GHz: 56,0%/ }).waitFor();
 
   await choose(preset, afternoon);
   await checkRows(presets[afternoon]);

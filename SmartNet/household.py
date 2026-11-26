@@ -42,6 +42,10 @@ def improve(rows, pause_downloads, lower_quality):
 
 # Download / upload estimates per active device, in Mbps.
 UPLOAD_RATES = np.array([0.1, 0.1, 1.5, 0.1, 0.5, 0.5, 2, 0.02, 0.05, 10, 0.01, 0.1])
+# The classroom slide supplies total demand per device without an upload split.
+CLASSROOM_RATES = RATES + UPLOAD_RATES
+CLASSROOM_RATES[[6, 11, 1, 3]] = [4.0, 15.0, 5.0, 12.0]
+CLASSROOM_UPLOAD_RATES = np.zeros_like(UPLOAD_RATES)
 BANDS = ['2,4 GHz', '5 GHz', 'Cable de red', 'No sé la banda']
 SIGNALS = {'Cerca y sin obstáculos (100%)': 1.0, 'Con paredes o distancia (50%)': 0.5, 'Lejos o con muchos obstáculos (25%)': 0.25}
 
@@ -55,7 +59,8 @@ def suggest_bands(rows):
     ]
 
 
-def network_summary(rows, download, upload, band_capacities):
+def network_summary(rows, download, upload, band_capacities, *,
+                    download_rates=RATES, upload_rates=UPLOAD_RATES):
     """Separate shared Internet constraints from hypothetical local Wi-Fi capacity.
 
     Wi-Fi uses summed up/down traffic as a simplified shared-capacity approximation,
@@ -64,16 +69,16 @@ def network_summary(rows, download, upload, band_capacities):
     if any(r.get('band', BANDS[3]) not in BANDS for r in rows):
         raise ValueError('Banda desconocida.')
     matrix = make_matrix(rows)
-    _, down_total, down_usage, _ = calculate(matrix, download, RATES)
-    up_total = float((matrix @ UPLOAD_RATES).sum())
+    _, down_total, down_usage, _ = calculate(matrix, download, download_rates)
+    up_total = float((matrix @ upload_rates).sum())
     if upload is not None and (not np.isfinite(upload) or upload <= 0):
         raise ValueError('La capacidad de subida debe ser mayor que cero.')
     bands = {}
     for band in BANDS:
         subset = [r for r in rows if r.get('band', BANDS[3]) == band]
         a = make_matrix(subset)
-        down = float((a @ RATES).sum())
-        up = float((a @ UPLOAD_RATES).sum())
+        down = float((a @ download_rates).sum())
+        up = float((a @ upload_rates).sum())
         capacity = band_capacities.get(band)
         if capacity is not None and (not np.isfinite(capacity) or capacity <= 0):
             raise ValueError('La capacidad Wi-Fi debe ser mayor que cero.')
